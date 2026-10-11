@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.3.1.0",
+                "changelog": "- fix: the ordered-name migration can no longer mistake another theme's file for a pre-ordering version of its own (only names that do not themselves look ordered are renamed)\n- fix: lookups batch 25 AniDB ids per request instead of 10, keeping large libraries under the API rate limit without retry storms",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.3.1.0/animethemes_7.3.1.0.zip",
+                "checksum": "205a55ec28279ae02b88ca3771025091",
+                "timestamp": "2026-10-11T11:34:53Z"
+            },
+            {
                 "version": "7.3.0.0",
                 "changelog": "- feat: multi-season shows are fully covered \u2014 the other seasons of a series (its AnimeThemes series and seasons with their own AniDB ids) are queried and their themes collected too\n- feat: openings play before insert songs and endings; the theme order is part of the file name (upstream #16)\n- fix: existing theme files are renamed to the new ordered names instead of being re-downloaded",
                 "targetAbi": "12.0.0.0",
