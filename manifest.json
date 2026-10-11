@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.3.0.0",
+                "changelog": "- feat: multi-season shows are fully covered \u2014 the other seasons of a series (its AnimeThemes series and seasons with their own AniDB ids) are queried and their themes collected too\n- feat: openings play before insert songs and endings; the theme order is part of the file name (upstream #16)\n- fix: existing theme files are renamed to the new ordered names instead of being re-downloaded",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.3.0.0/animethemes_7.3.0.0.zip",
+                "checksum": "a3737acb851126ac43bc4d6400c30957",
+                "timestamp": "2026-10-11T11:16:43Z"
+            },
+            {
                 "version": "7.2.0.0",
                 "changelog": "- feat: optional loudness normalization (ffmpeg loudnorm) so themes sit at a consistent level next to dialogue regardless of source loudness (addresses upstream #4 and #20)\n- feat: numeric volume read-out and finer control (step 0.01)\n- feat: the task now reports how many items were skipped for lacking an AniDB provider id (addresses upstream #22 and #19)\n- fix: media downloads are paced with a global throttle so parallel runs do not trip the CDN rate limit (addresses upstream #46)\n- docs: where theme files are stored and a troubleshooting section",
                 "targetAbi": "12.0.0.0",
