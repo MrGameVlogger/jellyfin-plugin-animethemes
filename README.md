@@ -55,7 +55,31 @@ Audio and video settings are configured separately, and again separately for ser
 | Ignore OP themes                        | Use this to control whether OPs are considered.                                                           |
 | Ignore ED themes                        | Use this to control whether EDs are considered.                                                           |
 | Fetch type                              | Determines if you want all distinct themes, only the best match, or none at all.                          |
-| Volume                                  | The desired volume, which will be baked in. For videos, 0 will result in the audio channel being removed. |
+| Normalize loudness                      | Keeps themes at a consistent loudness relative to dialogue (ffmpeg loudnorm) instead of a fixed volume.   |
+| Volume                                  | The desired volume, which will be baked in. For videos, 0 will result in the audio channel being removed. Ignored when loudness normalization is enabled. |
+
+## Where the files are stored
+
+Theme files live next to the media they belong to — there is no configurable location:
+
+- theme songs: `<series or movie folder>/theme-music/*.mp3`
+- theme videos: `<series or movie folder>/backdrops/*.webm`
+
+The file names encode the theme, the processing settings and the upstream content size
+(e.g. `Show-OP1__50__12345678.webm`), which is how the plugin knows what to keep, refresh or remove.
+Files placed in these folders by hand are never touched.
+
+## Troubleshooting
+
+- **Nothing downloads**: the plugin matches themes by the *AniDB* provider id on each series/movie. If
+  the task log says `Skipping N of M item(s) without an AniDB provider id`, install the
+  [AniDB plugin](https://github.com/jellyfin/jellyfin-plugin-anidb) and refresh your metadata so the
+  ids appear (check the item's metadata ids in the dashboard).
+- **"AnimeThemes has no themes for this anime yet"**: the show has an AnimeThemes entry but no
+  published themes yet — they are picked up automatically within one task interval.
+- **Many `Download failed ... 503` errors**: the AnimeThemes CDN rate-limits bursts; downloads are
+  retried automatically and anything missed is fetched on the next run. Keep the degree of
+  parallelism low for large first-time syncs.
 
 ## Releasing
 

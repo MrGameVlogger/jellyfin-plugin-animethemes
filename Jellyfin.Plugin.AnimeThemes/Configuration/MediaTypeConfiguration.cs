@@ -34,4 +34,11 @@ public class MediaTypeConfiguration
     /// Gets or sets the volume setting.
     /// </summary>
     public double Volume { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether themes are loudness-normalized instead of being
+    /// played at a fixed volume. Normalization keeps themes at a consistent loudness relative to
+    /// dialogue, no matter how loud the source is. The volume setting is ignored when enabled.
+    /// </summary>
+    public bool NormalizeLoudness { get; set; }
 }

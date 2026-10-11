@@ -1,7 +1,7 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 7.1.1.0
+version: 7.2.0.0
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
@@ -15,6 +15,8 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - fix: theme downloads are retried on transient errors — the AnimeThemes CDN sheds parallel load with 503s, which previously failed every download in a burst (the API client had retries, the media client did not)
-  - fix: download timeouts no longer abort the entire run
-  - fix: theme downloads now identify themselves with the product user-agent and allow up to 10 minutes for large files
+  - feat: optional loudness normalization (ffmpeg loudnorm) so themes sit at a consistent level next to dialogue regardless of source loudness (addresses upstream #4 and #20)
+  - feat: numeric volume read-out and finer control (step 0.01)
+  - feat: the task now reports how many items were skipped for lacking an AniDB provider id (addresses upstream #22 and #19)
+  - fix: media downloads are paced with a global throttle so parallel runs do not trip the CDN rate limit (addresses upstream #46)
+  - docs: where theme files are stored and a troubleshooting section

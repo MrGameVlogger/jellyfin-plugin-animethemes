@@ -38,8 +38,13 @@ public class AnimeThemesDownloader : IDisposable
     /// ever deleted, so files placed in these folders by hand are left alone.
     /// </summary>
     private static readonly Regex PluginThemeFilePattern = new(
-        @"^.+__\d+(?:__\d+)?(?:\.tmp)?\.(?:mp3|webm)$",
+        @"^.+__(?:n|\d+)(?:__\d+)?(?:\.tmp)?\.(?:mp3|webm)$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Paces media downloads so bursts of parallel work do not trip the CDN's rate limiting.
+    /// </summary>
+    private static readonly SemaphoreSlim DownloadGate = new(1, 1);
 
     private readonly HttpClient _client;
     private readonly AnimeThemesApi _api;
@@ -186,7 +191,7 @@ public class AnimeThemesDownloader : IDisposable
         foreach (var (url, relativePath) in links)
         {
             // Download if needed
-            changesMade |= await Download(type, url, item, relativePath, settings.Volume, cancellationToken).ConfigureAwait(false);
+            changesMade |= await Download(type, url, item, relativePath, settings, cancellationToken).ConfigureAwait(false);
         }
 
         // Clean up only after the downloads so a failed download never removes existing themes.
@@ -222,6 +227,8 @@ public class AnimeThemesDownloader : IDisposable
 
         foreach (var theme in themes)
         {
+            var marker = settings.NormalizeLoudness ? "n" : string.Create(CultureInfo.InvariantCulture, $"{settings.Volume * 100:0}");
+
             if (isAudio)
             {
                 var audio = theme.Audio;
@@ -232,7 +239,7 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{name}__{settings.Volume * 100:0}__{audio.Size ?? 0}.mp3"));
+                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{name}__{marker}__{audio.Size ?? 0}.mp3"));
             }
             else
             {
@@ -243,7 +250,7 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{name}__{settings.Volume * 100:0}__{theme.Video.Size ?? 0}.webm"));
+                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{name}__{marker}__{theme.Video.Size ?? 0}.webm"));
             }
         }
     }
@@ -340,7 +347,7 @@ public class AnimeThemesDownloader : IDisposable
         }
     }
 
-    private async ValueTask<bool> Download(MediaType type, string url, BaseItem item, string relativePath, double volume = 1.0, CancellationToken cancellationToken = default)
+    private async ValueTask<bool> Download(MediaType type, string url, BaseItem item, string relativePath, MediaTypeConfiguration settings, CancellationToken cancellationToken = default)
     {
         var path = CombineRelative(item.ContainingFolderPath, relativePath);
         if (File.Exists(path))
@@ -366,11 +373,23 @@ public class AnimeThemesDownloader : IDisposable
             Directory.CreateDirectory(Path.GetDirectoryName(path)!);
             {
                 _logger.LogInformation("[{Id}] Downloading {Url} to {Path}", item.Id, url, path);
-                using var downloadStream = await _client.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
-                using var fileStream = File.OpenWrite(tempFile);
 
-                // Download file
-                await downloadStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                // Pace the network part: parallel workers queue here so the CDN sees at most
+                // one request at a time, with a small gap between them.
+                await DownloadGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken).ConfigureAwait(false);
+                    using var downloadStream = await _client.GetStreamAsync(url, cancellationToken).ConfigureAwait(false);
+                    using var fileStream = File.OpenWrite(tempFile);
+
+                    // Download file
+                    await downloadStream.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    DownloadGate.Release();
+                }
             }
 
             // Convert OGG
@@ -401,15 +420,22 @@ public class AnimeThemesDownloader : IDisposable
                 arguments.Add("copy");
             }
 
-            if (volume < 0.01 && type == MediaType.Video)
+            if (!settings.NormalizeLoudness && settings.Volume < 0.01 && type == MediaType.Video)
             {
                 // Mute videos when volume is low enough
                 arguments.Add("-an");
             }
+            else if (settings.NormalizeLoudness)
+            {
+                // Normalize perceived loudness so themes sit at a consistent level next to
+                // dialogue no matter how loud the source master is.
+                arguments.Add("-filter:a");
+                arguments.Add("loudnorm=I=-16:TP=-1.5:LRA=11");
+            }
             else
             {
                 arguments.Add("-filter:a");
-                arguments.Add(string.Create(CultureInfo.InvariantCulture, $"volume={volume:0.00}"));
+                arguments.Add(string.Create(CultureInfo.InvariantCulture, $"volume={settings.Volume:0.00}"));
             }
 
             arguments.Add(tempOutput);

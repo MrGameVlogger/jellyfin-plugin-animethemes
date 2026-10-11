@@ -64,8 +64,17 @@ public abstract class BaseThemeSearchTask
         // @formatter:on
 
         // Get the anime objects in chunks
-        var itemsWithAnime = await items
-            .Where(it => _downloader.ShouldUpdate(it))
+        var candidates = items.Where(it => _downloader.ShouldUpdate(it)).ToList();
+        var skipped = items.Count - candidates.Count;
+        if (skipped > 0)
+        {
+            _logger.LogInformation(
+                "Skipping {Skipped} of {Total} item(s) without an AniDB provider id -- install the AniDB plugin and refresh metadata to include them",
+                skipped,
+                items.Count);
+        }
+
+        var itemsWithAnime = await candidates
             .Chunk(ChunkSize)
             .ToAsyncEnumerable()
             .SelectMany((chunk) => _downloader.ResolveItems(chunk, cancellationToken))
