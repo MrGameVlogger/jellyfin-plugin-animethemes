@@ -27,9 +27,8 @@ public abstract class BaseThemeSearchTask
     /// </summary>
     /// <param name="libraryManager">Library manager.</param>
     /// <param name="downloader">Downloader.</param>
-    /// <param name="userManager">Use manager.</param>
     /// <param name="logger">Logger.</param>
-    protected BaseThemeSearchTask(ILibraryManager libraryManager, AnimeThemesDownloader downloader, IUserManager userManager, ILogger logger)
+    protected BaseThemeSearchTask(ILibraryManager libraryManager, AnimeThemesDownloader downloader, ILogger logger)
     {
         _libraryManager = libraryManager;
         _downloader = downloader;
@@ -74,7 +73,7 @@ public abstract class BaseThemeSearchTask
 
         var semaphore = new SemaphoreSlim(1, 1);
         int counter = 0;
-        int count = items.Count;
+        int count = itemsWithAnime.Count;
 
         // Process in parallel
         await Parallel.ForEachAsync(itemsWithAnime, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = configuration.DegreeOfParallelism }, async (item, ct) =>
@@ -92,7 +91,7 @@ public abstract class BaseThemeSearchTask
             }
         }).ConfigureAwait(false);
 
-        _logger.LogInformation("Ending theme search ({Count})", count);
+        _logger.LogInformation("Ending theme search ({Count} items processed)", count);
     }
 
     private List<BaseItem> GetApplicableItems(PluginConfiguration configuration)

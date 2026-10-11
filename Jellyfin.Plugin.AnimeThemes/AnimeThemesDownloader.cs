@@ -59,7 +59,7 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>Whether item should be processed.</returns>
     public bool ShouldUpdate(BaseItem item, PluginConfiguration configuration)
     {
-        return TryGetAniDbId(item, configuration, out var id) && !IsSatisfied(item, configuration);
+        return TryGetAniDbId(item, out var id) && !IsSatisfied(item, configuration);
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public class AnimeThemesDownloader : IDisposable
     {
         var itemsByAniDb = items.GroupBy(it =>
         {
-            if (TryGetAniDbId(it, configuration, out var id))
+            if (TryGetAniDbId(it, out var id))
             {
                 return id;
             }
@@ -92,7 +92,16 @@ public class AnimeThemesDownloader : IDisposable
                 continue;
             }
 
-            yield return new ItemWithAnime(itemsByAniDb[entry.Key].First(), new ReadOnlyCollection<Anime>(entry.Value));
+            if (entry.Value.Length > 1)
+            {
+                _logger.LogWarning("AniDB={AniId} matched {Count} anime; themes of the first match will be used", entry.Key, entry.Value.Length);
+            }
+
+            var anime = new ReadOnlyCollection<Anime>(entry.Value);
+            foreach (var item in itemsByAniDb[entry.Key])
+            {
+                yield return new ItemWithAnime(item, anime);
+            }
         }
     }
 
@@ -183,12 +192,20 @@ public class AnimeThemesDownloader : IDisposable
 
         foreach (var theme in themes)
         {
-            var link = isAudio ? theme.Audio.Link : theme.Video.Link;
-            var path = isAudio
-                ? Path.Combine(ThemeMusicDirectory, $"{theme.Audio.Filename}__{settings.Volume * 100:0}.mp3")
-                : Path.Combine(ThemeVideoDirectory, $"{theme.Video.Filename}__{settings.Volume * 100:0}.webm");
+            if (isAudio)
+            {
+                var audio = theme.Audio;
+                if (audio is null)
+                {
+                    continue;
+                }
 
-            yield return (link, path);
+                yield return (audio.Link, Path.Combine(ThemeMusicDirectory, $"{audio.Filename}__{settings.Volume * 100:0}.mp3"));
+            }
+            else
+            {
+                yield return (theme.Video.Link, Path.Combine(ThemeVideoDirectory, $"{theme.Video.Filename}__{settings.Volume * 100:0}.webm"));
+            }
         }
     }
 
@@ -291,8 +308,12 @@ public class AnimeThemesDownloader : IDisposable
 
             process.Start();
 
-            var error = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
+            // Must consume both or ffmpeg may hang due to deadlocks.
+            var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
+            var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            var error = await errorTask.ConfigureAwait(false);
+            await outputTask.ConfigureAwait(false);
 
             if (process.ExitCode != 0)
             {
@@ -323,7 +344,7 @@ public class AnimeThemesDownloader : IDisposable
         return audioSatisfied && videoSatisfied;
     }
 
-    private bool TryGetAniDbId(BaseItem item, PluginConfiguration configuration, out int id)
+    private bool TryGetAniDbId(BaseItem item, out int id)
     {
         id = -1;
 
@@ -333,9 +354,10 @@ public class AnimeThemesDownloader : IDisposable
             return false;
         }
 
-        if (item.TryGetProviderId("AniDB", out var idAsString))
+        if (item.TryGetProviderId("AniDB", out var idAsString)
+            && int.TryParse(idAsString, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedId))
         {
-            id = int.Parse(idAsString, CultureInfo.InvariantCulture);
+            id = parsedId;
             return true;
         }
 
@@ -351,6 +373,16 @@ public class AnimeThemesDownloader : IDisposable
     private IEnumerable<FlattenedTheme> GetBestThemes(Anime anime, MediaTypeConfiguration settings)
     {
         return anime.Themes.SelectMany(theme => theme.Entries.SelectMany(entry => entry.Videos.Select(video => Wrap(theme, entry, video))))
+            .Where(it =>
+            {
+                if (it.Audio is not null)
+                {
+                    return true;
+                }
+
+                _logger.LogWarning("Skipping theme {Theme}: API response contained no audio track", it.Theme.Id);
+                return false;
+            })
             .OrderBy(Rate)
             .Where(it => !settings.IgnoreOverlapping || it.Video.Overlap == OverlapType.None)
             .Where(it => !settings.IgnoreThemesWithCredits || it.Video.Creditless)

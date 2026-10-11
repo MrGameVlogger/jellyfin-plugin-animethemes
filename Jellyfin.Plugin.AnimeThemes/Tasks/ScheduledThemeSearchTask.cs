@@ -20,9 +20,8 @@ public class ScheduledThemeSearchTask : BaseThemeSearchTask, IScheduledTask
     /// </summary>
     /// <param name="downloader">Downloader.</param>
     /// <param name="libraryManager">Library Manager.</param>
-    /// <param name="userManager">User Manager.</param>
     /// <param name="logger">Logger.</param>
-    public ScheduledThemeSearchTask(AnimeThemesDownloader downloader, ILibraryManager libraryManager, IUserManager userManager, ILogger<ScheduledThemeSearchTask> logger) : base(libraryManager, downloader, userManager, logger)
+    public ScheduledThemeSearchTask(AnimeThemesDownloader downloader, ILibraryManager libraryManager, ILogger<ScheduledThemeSearchTask> logger) : base(libraryManager, downloader, logger)
     {
         _logger = logger;
     }
