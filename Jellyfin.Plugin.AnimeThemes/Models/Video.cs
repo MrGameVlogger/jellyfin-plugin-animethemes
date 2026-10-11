@@ -11,6 +11,7 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// <param name="Id">The primary key of the resource.</param>
 /// <param name="Basename">The basename of the file in storage.</param>
 /// <param name="Filename">The filename of the file in storage.</param>
+/// <param name="Size">The size of the file in bytes. Used to detect upstream content changes.</param>
 /// <param name="Source">Where did this video come from? [WEB, RAW, BD, DVD, VHS, LD].</param>
 /// <param name="Overlap">The degree to which the sequence and episode content overlap [None, Transition, Over].</param>
 /// <param name="Link">The URL to stream the file from storage.</param>
@@ -22,6 +23,7 @@ public record Video(
     string Basename,
     [property: JsonPropertyName("filename")]
     string Filename,
+    [property: JsonPropertyName("size")] long? Size,
     [property: JsonPropertyName("source")] VideoSource? Source,
     [property: JsonPropertyName("overlap")]
     OverlapType Overlap,

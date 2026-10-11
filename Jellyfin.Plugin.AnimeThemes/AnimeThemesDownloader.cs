@@ -184,6 +184,9 @@ public class AnimeThemesDownloader : IDisposable
         bool changesMade = false;
         foreach (var (url, relativePath) in links)
         {
+            // Pre-content-marker file names (plugin < 7.0.3) must not linger next to the new ones.
+            changesMade |= RemoveLegacyName(item, relativePath);
+
             // Download if needed
             changesMade |= await Download(type, url, item, relativePath, settings.Volume, cancellationToken).ConfigureAwait(false);
         }
@@ -222,7 +225,7 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{name}__{settings.Volume * 100:0}.mp3"));
+                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{name}__{settings.Volume * 100:0}__{audio.Size ?? 0}.mp3"));
             }
             else
             {
@@ -233,7 +236,7 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{name}__{settings.Volume * 100:0}.webm"));
+                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{name}__{settings.Volume * 100:0}__{theme.Video.Size ?? 0}.webm"));
             }
         }
     }
@@ -253,6 +256,39 @@ public class AnimeThemesDownloader : IDisposable
         }
 
         return root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar + relative;
+    }
+
+    /// <summary>
+    /// Removes the variant of the given file that lacks the upstream size marker (used by plugin
+    /// versions before 7.0.3), so upgrades never leave duplicate themes behind.
+    /// </summary>
+    /// <param name="item">The item the theme belongs to.</param>
+    /// <param name="relativePath">The wanted file path, relative to the item folder.</param>
+    /// <returns>Whether a legacy file was removed.</returns>
+    private bool RemoveLegacyName(BaseItem item, string relativePath)
+    {
+        var directory = Path.GetDirectoryName(relativePath);
+        var name = Path.GetFileNameWithoutExtension(relativePath);
+        var markerIndex = name.LastIndexOf("__", StringComparison.Ordinal);
+
+        if (markerIndex <= 0
+            || !long.TryParse(name[(markerIndex + 2)..], NumberStyles.None, CultureInfo.InvariantCulture, out _))
+        {
+            return false;
+        }
+
+        var legacyFileName = name[..markerIndex] + Path.GetExtension(relativePath);
+        var legacyRelative = string.IsNullOrEmpty(directory) ? legacyFileName : CombineRelative(directory, legacyFileName);
+        var legacyPath = CombineRelative(item.ContainingFolderPath, legacyRelative);
+
+        if (!File.Exists(legacyPath))
+        {
+            return false;
+        }
+
+        _logger.LogInformation("[{Id}] Removing superseded theme file: {Path}", item.Id, legacyPath);
+        File.Delete(legacyPath);
+        return true;
     }
 
     private void RemoveFile(BaseItem series, string filename)

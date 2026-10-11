@@ -23,6 +23,8 @@ default; you can change the interval in Dashboard → Scheduled Tasks.
 - Items that **already have** themes are left alone. Enable *Enforce conformity with the
   configuration* to re-check every anime on every run — this also picks up newly added themes and
   removes themes that no longer match your configuration.
+- Files are re-downloaded automatically when AnimeThemes replaces their content: the source size is
+  part of the file name, so a changed file counts as a new file.
 
 Also make sure to enable theme music / videos in your display settings.
 

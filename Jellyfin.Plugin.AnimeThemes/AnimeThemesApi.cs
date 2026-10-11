@@ -53,6 +53,7 @@ public sealed class AnimeThemesApi : IDisposable
                                 id
                                 basename
                                 filename
+                                size
                                 source
                                 overlap
                                 nc
@@ -62,6 +63,7 @@ public sealed class AnimeThemesApi : IDisposable
                                     path
                                     filename
                                     mimetype
+                                    size
                                     link
                                 }
                             }
