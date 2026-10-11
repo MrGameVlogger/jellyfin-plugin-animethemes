@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.1.0.0",
+                "changelog": "- feat!: theme sync is now always on: every run downloads new themes, removes outdated ones and refreshes replaced content (the \"Enforce conformity\" option is gone)\n- fix: cleanup runs after downloads, so a failed download can no longer remove existing themes\n- fix: only files created by the plugin are ever deleted; hand-made theme files are left alone\n- fix: partial ffmpeg output is no longer kept as a valid theme (results are finalized atomically)\n- fix: theme deletions now trigger a metadata refresh\n- fix: invalid include/exclude library regexes abort the run with a clear error instead of crashing",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.1.0.0/animethemes_7.1.0.0.zip",
+                "checksum": "a4599c1286a0f60c3c04cde32f3cacf0",
+                "timestamp": "2026-10-11T09:55:45Z"
+            },
+            {
                 "version": "7.0.3.0",
                 "changelog": "- fix: always keep the newest theme files \u2014 the upstream file size is now part of the file name, so content replaced on AnimeThemes is re-downloaded automatically and superseded files are removed",
                 "targetAbi": "12.0.0.0",
