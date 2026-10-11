@@ -19,53 +19,74 @@ namespace Jellyfin.Plugin.AnimeThemes;
 /// </remarks>
 public sealed class AnimeThemesApi : IDisposable
 {
+    /// <summary>
+    /// Number of AniDB ids resolved per request. Kept low because every match also pulls in the
+    /// full theme tree of its series (the seasons of the show).
+    /// </summary>
+    private const int QueryBatchSize = 10;
+
     private const string FindAnimeByExternalSiteQuery = """
         query ($ids: [Int!]!) {
             findAnimeByExternalSite(site: ANIDB, id: $ids) {
-                id
-                slug
-                year
-                title {
-                    romaji
-                }
-                resources {
+                ...AnimeDetails
+                series {
                     nodes {
-                        site
-                        externalId
+                        id
+                        name
+                        anime {
+                            nodes {
+                                ...AnimeDetails
+                            }
+                        }
                     }
                 }
-                animethemes {
+            }
+        }
+
+        fragment AnimeDetails on Anime {
+            id
+            slug
+            year
+            title {
+                romaji
+            }
+            resources {
+                nodes {
+                    site
+                    externalId
+                }
+            }
+            animethemes {
+                id
+                type
+                sequence
+                slug
+                group {
+                    name
+                }
+                animethemeentries {
                     id
-                    type
-                    sequence
-                    slug
-                    group {
-                        name
-                    }
-                    animethemeentries {
-                        id
-                        version
-                        episodes
-                        nsfw
-                        spoiler
-                        videos {
-                            nodes {
+                    version
+                    episodes
+                    nsfw
+                    spoiler
+                    videos {
+                        nodes {
+                            id
+                            basename
+                            filename
+                            size
+                            source
+                            overlap
+                            nc
+                            link
+                            audio {
                                 id
-                                basename
+                                path
                                 filename
+                                mimetype
                                 size
-                                source
-                                overlap
-                                nc
                                 link
-                                audio {
-                                    id
-                                    path
-                                    filename
-                                    mimetype
-                                    size
-                                    link
-                                }
                             }
                         }
                     }
@@ -89,7 +110,8 @@ public sealed class AnimeThemesApi : IDisposable
     }
 
     /// <summary>
-    /// Finds anime with all their themes by their AniDB Ids.
+    /// Finds anime with all their themes by their AniDB Ids. Each result also contains the other
+    /// anime of the same AnimeThemes series (the seasons of the show).
     /// </summary>
     /// <param name="ids">IDs on AniDB.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -100,48 +122,96 @@ public sealed class AnimeThemesApi : IDisposable
 
         _logger.LogInformation("Looking up {Count} shows in the AnimeThemes db...", idList.Length);
 
-        if (idList.Length > 100)
+        var found = new List<Anime>();
+        foreach (var batch in idList.Chunk(QueryBatchSize))
         {
-            throw new ArgumentOutOfRangeException(nameof(ids));
+            var response = await QueryBatchAsync(batch, cancellationToken).ConfigureAwait(false);
+
+            if (response?.Errors is { Count: > 0 })
+            {
+                _logger.LogError("AnimeThemes API returned errors: {Errors}", string.Join("; ", response.Errors.Select(it => it.Message)));
+            }
+
+            found.AddRange(response?.Data?.Anime ?? []);
         }
 
-        var payload = new { query = FindAnimeByExternalSiteQuery, variables = new { ids = idList } };
+        // Index the matches by the AniDB id they were found through.
+        var byAniId = new Dictionary<int, List<Anime>>();
+        foreach (var anime in found)
+        {
+            if (anime.AniDbId is not int key)
+            {
+                continue;
+            }
 
-        AnimeResponse? response = null;
+            if (!byAniId.TryGetValue(key, out var list))
+            {
+                list = [];
+                byAniId[key] = list;
+            }
+
+            list.Add(anime);
+        }
+
+        // Every requested id maps to its matches plus the other seasons of their series.
+        var result = new Dictionary<int, Anime[]>(idList.Length);
+        foreach (var id in idList)
+        {
+            var expanded = new Dictionary<int, Anime>();
+            foreach (var root in byAniId.GetValueOrDefault(id) ?? [])
+            {
+                foreach (var anime in ExpandWithSeries(root))
+                {
+                    expanded.TryAdd(anime.Id, anime);
+                }
+            }
+
+            result[id] = [.. expanded.Values];
+        }
+
+        _logger.LogInformation("Of a total of {TotalCount} shows, we were able to find entries for {FinalCount} shows", idList.Length, result.Values.Count(it => it.Length > 0));
+
+        return result;
+    }
+
+    /// <summary>
+    /// Yields the anime itself plus every other anime of its series (the seasons of the show).
+    /// </summary>
+    /// <param name="anime">The matched anime.</param>
+    /// <returns>The anime and its series siblings.</returns>
+    private static IEnumerable<Anime> ExpandWithSeries(Anime anime)
+    {
+        yield return anime;
+
+        foreach (var series in anime.Series?.Nodes ?? [])
+        {
+            foreach (var sibling in series.Anime?.Nodes ?? [])
+            {
+                yield return sibling;
+            }
+        }
+    }
+
+    private async ValueTask<AnimeResponse?> QueryBatchAsync(int[] ids, CancellationToken cancellationToken)
+    {
+        var payload = new { query = FindAnimeByExternalSiteQuery, variables = new { ids } };
+
         try
         {
-            _logger.LogInformation("Querying the AnimeThemes GraphQL API for {Count} AniDB ids", idList.Length);
+            _logger.LogInformation("Querying the AnimeThemes GraphQL API for {Count} AniDB ids", ids.Length);
             var result = await _client.PostAsJsonAsync("/", payload, cancellationToken).ConfigureAwait(false);
             result.EnsureSuccessStatusCode();
 
-            response = await result.Content.ReadFromJsonAsync<AnimeResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            return await result.Content.ReadFromJsonAsync<AnimeResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception e)
+        catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             // A lookup failure must not abort the whole run; the affected items are simply
             // skipped and picked up again on the next run. Timeouts surface as
-            // TaskCanceledException too, but they are not user cancellation.
+            // TaskCanceledException too, but only real user cancellation propagates.
             _logger.LogError(e, "AnimeThemes API lookup failed");
+            return null;
         }
-
-        if (response?.Errors is { Count: > 0 })
-        {
-            _logger.LogError("AnimeThemes API returned errors: {Errors}", string.Join("; ", response.Errors.Select(it => it.Message)));
-        }
-
-        var found = response?.Data?.Anime ?? [];
-        var animeByAniId = found
-            .Where(a => a.AniDbId.HasValue)
-            .GroupBy(a => a.AniDbId!.Value)
-            .ToDictionary(a => a.Key, a => a.ToArray());
-
-        _logger.LogInformation("Of a total of {TotalCount} shows, we were able to find entries for {FinalCount} shows", idList.Length, animeByAniId.Count);
-
-        return idList.ToDictionary(id => id, id => animeByAniId.GetValueOrDefault(id) ?? []);
     }
 
     /// <summary>
