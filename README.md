@@ -3,11 +3,19 @@
 Plugin for [Jellyfin](https://jellyfin.org/) that fetches anime themes (OPs and EDs)
 from [animethemes.moe](https://animethemes.moe). Both audio files and video files are supported.
 
-**An AniDB ID is used to find matching themes, so you'll need to install the AniDB plugin. All other series are ignored.**
+**An AniDB ID is used to find matching themes, so you'll need to install the
+[AniDB plugin](https://github.com/jellyfin/jellyfin-plugin-anidb). All other series are ignored.**
+
+## Compatibility
+
+| Jellyfin | Plugin |
+|----------|--------|
+| 12.0 or newer | v7 or newer |
+| 10.11.x | [v6](https://github.com/EusthEnoptEron/jellyfin-plugin-animethemes/releases/tag/6) (final release for 10.11) |
 
 ## How to use
 
-The plugin creates a new scheduled task that you can configure. By default, it will run every 6 hours.
+The plugin creates a new scheduled task that you can configure. By default, it will run every 12 hours.
 Also make sure to enable theme music / videos in your display settings.
 
 ## How to install
@@ -15,12 +23,12 @@ Also make sure to enable theme music / videos in your display settings.
 ### Plugin Manager
 
 1. Add the following repository to your plugin repositories:
-   https://raw.githubusercontent.com/EusthEnoptEron/jellyfin-plugin-animethemes/main/manifest.json
+   https://raw.githubusercontent.com/MrGameVlogger/jellyfin-plugin-animethemes/main/manifest.json
 2. Find the plugin in the catalog and install it.
 
 ### Manually
 
-1. [Grab the latest build.](https://github.com/EusthEnoptEron/jellyfin-plugin-animethemes/actions/workflows/build.yaml)
+1. [Grab the latest build.](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/build.yaml)
 2. Download it into your plugins folder [as described here](https://jellyfin.org/docs/general/server/plugins/).
 
 ## Configuration
@@ -35,6 +43,16 @@ Also make sure to enable theme music / videos in your display settings.
 | Fetch type                              | Determines if you want all distinct themes, only the best match, or none at all.                          |
 | Volume                                  | The desired volume, which will be baked in. For videos, 0 will result in the audio channel being removed. |
 
+## Releasing
+
+1. Merge the automated **"Prepare for release"** PR (or bump `Version` in `Directory.Build.props` and
+   `version` in `build.yaml` yourself).
+   - The automated bump sets `targetAbi` to the *current* Jellyfin version. Lower it back to `12.0.0.0`
+     to keep the plugin installable on all Jellyfin 12.x servers.
+2. Create a GitHub release with the bare-integer tag matching the version (e.g. `7`).
+3. The publish workflow builds the plugin, attaches the zip to the release and updates `manifest.json`
+   (checksum included) automatically.
+
 ## Other notes
 
 If you want the videos to cover the whole screen, try the following CSS:
@@ -44,3 +62,7 @@ body:not(.hide-scroll) > .videoPlayerContainer > video {
     object-fit: cover;
 }
 ```
+
+---
+
+Originally created by [EusthEnoptEron](https://github.com/EusthEnoptEron).
