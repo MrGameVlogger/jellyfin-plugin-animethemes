@@ -107,11 +107,21 @@ public sealed class AnimeThemesApi : IDisposable
 
         var payload = new { query = FindAnimeByExternalSiteQuery, variables = new { ids = idList } };
 
-        _logger.LogInformation("Querying the AnimeThemes GraphQL API for {Count} AniDB ids", idList.Length);
-        var result = await _client.PostAsJsonAsync("/", payload, cancellationToken).ConfigureAwait(false);
-        result.EnsureSuccessStatusCode();
+        AnimeResponse? response = null;
+        try
+        {
+            _logger.LogInformation("Querying the AnimeThemes GraphQL API for {Count} AniDB ids", idList.Length);
+            var result = await _client.PostAsJsonAsync("/", payload, cancellationToken).ConfigureAwait(false);
+            result.EnsureSuccessStatusCode();
 
-        var response = await result.Content.ReadFromJsonAsync<AnimeResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+            response = await result.Content.ReadFromJsonAsync<AnimeResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // A lookup failure must not abort the whole run; the affected items are simply
+            // skipped and picked up again on the next run.
+            _logger.LogError(e, "AnimeThemes API lookup failed");
+        }
 
         if (response?.Errors is { Count: > 0 })
         {

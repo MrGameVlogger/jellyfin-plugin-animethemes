@@ -65,10 +65,10 @@ public abstract class BaseThemeSearchTask
 
         // Get the anime objects in chunks
         var itemsWithAnime = await items
-            .Where(it => _downloader.ShouldUpdate(it, configuration))
+            .Where(it => _downloader.ShouldUpdate(it))
             .Chunk(ChunkSize)
             .ToAsyncEnumerable()
-            .SelectMany((chunk) => _downloader.ResolveItems(chunk, configuration, cancellationToken))
+            .SelectMany((chunk) => _downloader.ResolveItems(chunk, cancellationToken))
             .ToListAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
         using var semaphore = new SemaphoreSlim(1, 1);
@@ -96,25 +96,36 @@ public abstract class BaseThemeSearchTask
 
     private List<BaseItem> GetApplicableItems(PluginConfiguration configuration)
     {
-        var includeRegex = !string.IsNullOrWhiteSpace(configuration.IncludeLibraries)
-            ? new Regex(configuration.IncludeLibraries, RegexOptions.IgnoreCase | RegexOptions.Compiled)
-            : new Regex("^.*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+        Regex includeRegex;
+        Regex? excludeRegex;
 
-        var excludeRegex = !string.IsNullOrWhiteSpace(configuration.ExcludeLibraries)
-            ? new Regex(configuration.ExcludeLibraries, RegexOptions.IgnoreCase | RegexOptions.Compiled)
-            : null;
+        try
+        {
+            includeRegex = !string.IsNullOrWhiteSpace(configuration.IncludeLibraries)
+                ? new Regex(configuration.IncludeLibraries, RegexOptions.IgnoreCase | RegexOptions.Compiled)
+                : new Regex("^.*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+            excludeRegex = !string.IsNullOrWhiteSpace(configuration.ExcludeLibraries)
+                ? new Regex(configuration.ExcludeLibraries, RegexOptions.IgnoreCase | RegexOptions.Compiled)
+                : null;
+        }
+        catch (ArgumentException e)
+        {
+            _logger.LogError(e, "Invalid include/exclude library regex -- aborting");
+            return [];
+        }
 
         var libraries = _libraryManager.GetItemList(new InternalItemsQuery { IncludeItemTypes = [BaseItemKind.CollectionFolder] });
 
         _logger.LogInformation("Considering the following libraries: {Libraries}", libraries.Select(it => it.Name));
 
-        var matches = libraries.Where(item => includeRegex.IsMatch(item.Name)).ToList();
+        var matches = libraries.Where(item => includeRegex.IsMatch(item.Name ?? string.Empty)).ToList();
 
         _logger.LogInformation("Matching libraries (Included): {Libraries}", matches.Select(i => i.Name));
 
         if (excludeRegex != null)
         {
-            matches = matches.Where(item => !excludeRegex.IsMatch(item.Name)).ToList();
+            matches = matches.Where(item => !excludeRegex.IsMatch(item.Name ?? string.Empty)).ToList();
             _logger.LogInformation("Matching libraries (Without Excluded): {Libraries}", matches.Select(i => i.Name));
         }
         else
