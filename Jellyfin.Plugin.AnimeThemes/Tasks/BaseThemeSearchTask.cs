@@ -76,7 +76,7 @@ public abstract class BaseThemeSearchTask
         int count = itemsWithAnime.Count;
 
         // Process in parallel
-        await Parallel.ForEachAsync(itemsWithAnime, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = configuration.DegreeOfParallelism }, async (item, ct) =>
+        await Parallel.ForEachAsync(itemsWithAnime, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = Math.Max(1, configuration.DegreeOfParallelism) }, async (item, ct) =>
         {
             await _downloader.HandleAsync(item.Item, item.Anime.First(), configuration, ct).ConfigureAwait(false);
             await semaphore.WaitAsync(ct).ConfigureAwait(false);
