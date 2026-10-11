@@ -16,6 +16,6 @@ jobs:
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
     with:
-      repository-name: EusthEnoptEron/jellyfin-plugin-animethemes
+      repository-name: ${{ github.repository }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
