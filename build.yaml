@@ -1,7 +1,7 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 7.3.1.0
+version: 7.3.2.0
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
@@ -15,5 +15,4 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - fix: the ordered-name migration can no longer mistake another theme's file for a pre-ordering version of its own (only names that do not themselves look ordered are renamed)
-  - fix: lookups batch 25 AniDB ids per request instead of 10, keeping large libraries under the API rate limit without retry storms
+  - fix: only seasons of the same show are collected from its AnimeThemes series — spin-offs, movies and remakes no longer leak into a series' theme pool (the series grouping is franchise-wide; siblings must now match by format, title and premiere year)

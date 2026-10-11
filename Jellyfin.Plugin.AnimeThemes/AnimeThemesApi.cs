@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.AnimeThemes.Models;
@@ -26,6 +27,12 @@ public sealed class AnimeThemesApi : IDisposable
     /// </summary>
     private const int QueryBatchSize = 25;
 
+    /// <summary>
+    /// Largest premiere-year gap between a show and one of its seasons. Remakes of a show share
+    /// its title but premiere many years later; no season of one show stands this far apart.
+    /// </summary>
+    private const int MaxSeasonYearGap = 10;
+
     private const string FindAnimeByExternalSiteQuery = """
         query ($ids: [Int!]!) {
             findAnimeByExternalSite(site: ANIDB, id: $ids) {
@@ -48,6 +55,7 @@ public sealed class AnimeThemesApi : IDisposable
             id
             slug
             year
+            format
             title {
                 romaji
             }
@@ -98,6 +106,19 @@ public sealed class AnimeThemesApi : IDisposable
 
     private readonly HttpClient _client;
     private readonly ILogger<AnimeThemesDownloader> _logger;
+
+    /// <summary>
+    /// Season markers found in anime titles ("2nd Season", "Season 3", "Part 2", "II", "The Final").
+    /// </summary>
+    private static readonly Regex SeasonMarkerPattern = new(
+        @"\s+\d+(?:st|nd|rd|th)\s+Season\b"
+        + @"|\s+Season\s+\d+\b"
+        + @"|\s+(?:Part|Cour)\s+\d+\b"
+        + @"|\s+(?:The\s+)?Final(?:\s+Season)?\b"
+        + @"|\s+(?:X|IX|VI{0,3}|IV|V|I{1,3})\b",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    private static readonly Regex WhitespacePattern = new(@"\s{2,}", RegexOptions.Compiled);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="AnimeThemesApi"/> class.
@@ -176,10 +197,13 @@ public sealed class AnimeThemesApi : IDisposable
     }
 
     /// <summary>
-    /// Yields the anime itself plus every other anime of its series (the seasons of the show).
+    /// Yields the anime itself plus the other anime of its series that are seasons of the same
+    /// show. A series groups a whole franchise (spin-offs, movies, remakes), so siblings are
+    /// filtered down to same-format entries whose title matches after season markers are stripped
+    /// (or that extend the root title) and whose premiere year is close to the root's.
     /// </summary>
     /// <param name="anime">The matched anime.</param>
-    /// <returns>The anime and its series siblings.</returns>
+    /// <returns>The anime and its seasons.</returns>
     private static IEnumerable<Anime> ExpandWithSeries(Anime anime)
     {
         yield return anime;
@@ -188,9 +212,82 @@ public sealed class AnimeThemesApi : IDisposable
         {
             foreach (var sibling in series.Anime?.Nodes ?? [])
             {
-                yield return sibling;
+                if (IsSameShow(anime, sibling))
+                {
+                    yield return sibling;
+                }
             }
         }
+    }
+
+    /// <summary>
+    /// Tells seasons of a show apart from franchise spin-offs and remakes.
+    /// </summary>
+    /// <param name="root">The matched anime.</param>
+    /// <param name="sibling">A candidate from the same series.</param>
+    /// <returns>Whether the candidate is a season of the root's show.</returns>
+    private static bool IsSameShow(Anime root, Anime sibling)
+    {
+        if (sibling.Id == root.Id)
+        {
+            return true;
+        }
+
+        // Movies, OVAs, specials and shorts are spin-off material, not seasons.
+        if (string.IsNullOrEmpty(root.Format)
+            || !string.Equals(sibling.Format, root.Format, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!TitlesMatch(root.Title?.Romaji, sibling.Title?.Romaji))
+        {
+            return false;
+        }
+
+        // Remakes carry the same title but premiere many years later (Fruits Basket 2001 vs
+        // 2019); seasons of one show never stand that far apart.
+        return root.Year is not int ry
+            || sibling.Year is not int sy
+            || Math.Abs(sy - ry) <= MaxSeasonYearGap;
+    }
+
+    /// <summary>
+    /// Whether two titles belong to the same show: equal once season markers are stripped, or one
+    /// extends the other at a word boundary (e.g. a subtitle sequel).
+    /// </summary>
+    /// <param name="root">The root title.</param>
+    /// <param name="sibling">The candidate title.</param>
+    /// <returns>Whether the titles refer to the same show.</returns>
+    private static bool TitlesMatch(string? root, string? sibling)
+    {
+        if (string.IsNullOrEmpty(root) || string.IsNullOrEmpty(sibling))
+        {
+            return false;
+        }
+
+        if (string.Equals(NormalizeTitle(root), NormalizeTitle(sibling), StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        var shorter = root.Length <= sibling.Length ? root : sibling;
+        var longer = root.Length <= sibling.Length ? sibling : root;
+        return longer.Length > shorter.Length
+            && longer.StartsWith(shorter, StringComparison.OrdinalIgnoreCase)
+            && !char.IsLetterOrDigit(longer[shorter.Length]);
+    }
+
+    /// <summary>
+    /// Strips season markers ("2nd Season", "Part 2", "II", "The Final", …) from a title.
+    /// </summary>
+    /// <param name="title">The title to normalize.</param>
+    /// <returns>The title without season markers.</returns>
+    private static string NormalizeTitle(string title)
+    {
+        var normalized = SeasonMarkerPattern.Replace(title, string.Empty);
+        normalized = WhitespacePattern.Replace(normalized, " ");
+        return normalized.Trim().TrimEnd(':', '-', '–', '—').Trim();
     }
 
     private async ValueTask<AnimeResponse?> QueryBatchAsync(int[] ids, CancellationToken cancellationToken)

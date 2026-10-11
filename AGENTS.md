@@ -36,7 +36,10 @@ Single project (`Jellyfin.Plugin.AnimeThemes`), no test project. Execution flow:
    - collects the item's AniDB provider id (`TryGetProviderId("AniDB", …)`, **case-insensitive**
      dictionary — any casing works) and any **child seasons'** AniDB ids
    - `AnimeThemesApi.FindByAniDbId` batches ids (25/request) and expands each match with its
-     AnimeThemes `series → anime` siblings (the show's other seasons)
+     AnimeThemes `series → anime` siblings that are **seasons of the same show** (`IsSameShow`:
+     same format + title match after stripping season markers + premiere year within 10). The
+     series grouping is franchise-wide — without the filter, spin-offs, movies and remakes leak in
+     (remakes share the exact title; only the year separates them)
    - yields per-item theme pools (`ItemWithAnime`) covering all matched anime
 4. `AnimeThemesDownloader.HandleAsync` processes items through `Parallel.ForEachAsync`
    (parallelism config, clamped ≥ 1): theme selection (`GetBestThemes` filters + `Rate()`

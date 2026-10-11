@@ -13,6 +13,7 @@ public record Anime(
     [property: JsonPropertyName("title")] AnimeTitle Title,
     [property: JsonPropertyName("slug")] string Slug,
     [property: JsonPropertyName("year")] int? Year,
+    [property: JsonPropertyName("format")] string? Format,
     [property: JsonPropertyName("resources")]
     ResourceConnection Resources,
     [property: JsonPropertyName("animethemes")]
