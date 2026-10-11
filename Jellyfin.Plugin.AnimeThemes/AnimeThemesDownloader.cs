@@ -115,7 +115,7 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>Task that runts until item is done processing.</returns>
     public async ValueTask HandleAsync(BaseItem item, Anime anime, PluginConfiguration configuration, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[{Id}] Attempting to filter theme songs for: {Name} (AniDB={AniDbId}, AnimeThemes={AnimeThemesId})", item.Id, item.Name, anime.AniDbId, anime.Id);
+        _logger.LogInformation("[{Id}] Attempting to filter themes for: {Name} (AniDB={AniDbId}, AnimeThemes={AnimeThemesId})", item.Id, item.Name, anime.AniDbId, anime.Id);
 
         bool isMovie = item.GetBaseItemKind() == BaseItemKind.Movie;
         var collectionTypeConfig = isMovie ? configuration.MovieSettings : new CollectionTypeConfiguration { AudioSettings = configuration.AudioSettings, VideoSettings = configuration.VideoSettings };
@@ -360,7 +360,7 @@ public class AnimeThemesDownloader : IDisposable
                 throw new ConversionException(process.ExitCode, commandInfo + "\n" + error);
             }
 
-            _logger.LogInformation("[{Id}] Successfully downloaded theme song!", item.Id);
+            _logger.LogInformation("[{Id}] Successfully downloaded theme {Type}", item.Id, type == MediaType.Video ? "video" : "audio");
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
