@@ -83,7 +83,7 @@ jobs:
           tag="${{ github.event.release.tag_name }}"
           for zip in dist/*.zip; do
             name="$(basename "$zip")"
-            python3 -m jprm repo add manifest.json "$zip" \
+            python3 -m jprm repo add ./manifest.json "$zip" \
               --plugin-url "https://github.com/${{ github.repository }}/releases/download/${tag}/${name}"
           done
 
