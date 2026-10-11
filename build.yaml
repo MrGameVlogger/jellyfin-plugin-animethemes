@@ -1,7 +1,7 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 7
+version: 7.0.1.0
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
@@ -15,6 +15,4 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - feat: support Jellyfin 12 (.NET 10)
-  - feat: migrate to the AnimeThemes GraphQL API (the JSON:API is deprecated and will be removed)
-  - fix: correctness, robustness and security hardening
+  - fix: type-aware theme download log messages

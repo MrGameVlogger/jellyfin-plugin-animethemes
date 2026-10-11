@@ -50,11 +50,13 @@ Audio and video settings are configured separately, and again separately for ser
 
 ## Releasing
 
-1. Merge the automated **"Prepare for release"** PR (or bump `Version` in `Directory.Build.props` and
-   `version` in `build.yaml` yourself).
-   - The automated bump sets `targetAbi` to the *current* Jellyfin version. Lower it back to `12.0.0.0`
-     to keep the plugin installable on all Jellyfin 12.x servers.
-2. Create a GitHub release with the bare-integer tag matching the version (e.g. `7`).
+Versions follow `major.minor.patch.0` (e.g. `7.0.1.0`); the git tag matches the version exactly.
+
+1. Bump `Version`, `AssemblyVersion` and `FileVersion` in `Directory.Build.props` and `version` in
+   `build.yaml`, and set `build.yaml`'s `changelog` to the release notes bullets.
+   Keep `targetAbi` at `12.0.0.0` so the plugin stays installable on all Jellyfin 12.x servers.
+2. Create a GitHub release with the version as the tag (e.g. `7.0.1.0`). Release Drafter keeps a
+   draft with the accumulated notes ready to paste.
 3. The publish workflow builds the plugin, attaches the zip to the release and updates `manifest.json`
    (checksum included) automatically.
 

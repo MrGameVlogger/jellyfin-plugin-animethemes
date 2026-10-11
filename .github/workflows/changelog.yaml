@@ -1,24 +1,20 @@
-name: '📝 Create/Update Release Draft & Release Bump PR'
+name: '📝 Create/Update Release Draft'
 
 on:
   push:
     branches:
       - main
-    paths-ignore:
-      - build.yaml
-      - Directory.Build.props
   workflow_dispatch:
-  repository_dispatch:
-    types:
-      - update-prep-command
+
+permissions:
+  contents: write
+  pull-requests: read
 
 jobs:
-  call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@5ebf9f9455736773ab6f94cdb19fb903ece41b83 # master
-    permissions:
-      contents: write
-      pull-requests: write
-    with:
-      repository-name: ${{ github.repository }}
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+  update_release_draft:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Draft
+        uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
