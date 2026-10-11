@@ -12,7 +12,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     /// <inheritdoc />
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
-        serviceCollection.AddScoped<AnimeThemesDownloader>();
+        serviceCollection.AddSingleton<AnimeThemesDownloader>();
 
         var productHeader = new ProductInfoHeaderValue(
             "jf-plugin-animethemes",
