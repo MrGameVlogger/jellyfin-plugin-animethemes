@@ -1,0 +1,65 @@
+name: Bug report
+description: Report a problem with the AnimeThemes plugin
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug!
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the problem and what you expected instead.
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Dashboard -> Plugins -> AnimeThemes.
+      placeholder: "e.g. 7.0.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: jellyfin-version
+    attributes:
+      label: Jellyfin version
+      placeholder: "e.g. 12.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation method
+      options:
+        - Plugin catalog (manifest repository)
+        - Manual (DLL in the plugins folder)
+        - Built from source
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: From the "Search For Anime Themes" task output or the Jellyfin log.
+      render: shell
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: I am running Jellyfin 12.0 or newer with plugin v7 or newer
+        - label: I have searched existing issues for duplicates

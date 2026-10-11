@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Jellyfin community
+    url: https://jellyfin.org/contact/
+    about: General Jellyfin questions that are not specific to this plugin.
