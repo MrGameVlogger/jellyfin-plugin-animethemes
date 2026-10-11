@@ -16,17 +16,17 @@ from [animethemes.moe](https://animethemes.moe). Both audio files and video file
 ## How to use
 
 The plugin creates a new scheduled task ("Search For Anime Themes") that runs **every 12 hours** by
-default; you can change the interval in Dashboard → Scheduled Tasks.
+default; you can change the interval in Dashboard → Scheduled Tasks. Every run keeps your themes in
+sync with AnimeThemes:
 
-- Items **without** themes are looked up on every run, so new themes appear on AnimeThemes are picked
-  up automatically within one interval.
-- Items that **already have** themes are left alone. Enable *Enforce conformity with the
-  configuration* to re-check every anime on every run — this also picks up newly added themes and
-  removes themes that no longer match your configuration.
-- Files are re-downloaded automatically when AnimeThemes replaces their content: the source size is
-  part of the file name, so a changed file counts as a new file.
+- Newly added themes are downloaded, within one interval of appearing on AnimeThemes.
+- Themes that no longer match your configuration — or that were removed upstream — are deleted.
+- Files whose content changed upstream are re-downloaded (the source size is part of the file name,
+  so a changed file counts as a new file).
+- Files the plugin did not create are never touched.
 
-Also make sure to enable theme music / videos in your display settings.
+Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure
+to enable theme music / videos in your display settings.
 
 ## How to install
 
@@ -48,7 +48,6 @@ Audio and video settings are configured separately, and again separately for ser
 | Configuration                           | Description                                                                                               |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | Degree of parallelism                   | How many items should be downloaded in parallel. Default is set to 1 to go easy on the servers.           |
-| Enforce conformity with the configuration | When enabled, every run re-checks every anime and downloads/deletes themes to match the configuration.  |
 | Included libraries (regex)              | Only libraries matching this regex are searched for anime themes. Case-insensitive.                       |
 | Excluded libraries (regex)              | Matching libraries are ignored even if they match the include regex. Leave empty to ignore.               |
 | Ignore themes that overlap with episode | Some shows transition into their themes. Use this setting to filter those themes out.                     |

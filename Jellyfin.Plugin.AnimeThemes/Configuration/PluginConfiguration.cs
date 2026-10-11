@@ -14,7 +14,6 @@ public class PluginConfiguration : BasePluginConfiguration
     {
         // set default options here
         DegreeOfParallelism = 1;
-        ForceSync = false;
         IncludeLibraries = "^.*$";
         ExcludeLibraries = string.Empty;
 
@@ -45,11 +44,6 @@ public class PluginConfiguration : BasePluginConfiguration
     /// Gets or sets how many themes are downloaded in parallel.
     /// </summary>
     public int DegreeOfParallelism { get; set; }
-
-    /// <summary>
-    /// Gets or sets a value indicating whether the sync should enforce conformity.
-    /// </summary>
-    public bool ForceSync { get; set; }
 
     /// <summary>
     /// Gets or sets a regex for libraries to consider.
