@@ -16,5 +16,9 @@ on:
 jobs:
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/scan-codeql.yaml@master
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
     with:
       repository-name: ${{ github.repository }}

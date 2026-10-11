@@ -8,5 +8,8 @@ on:
 jobs:
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/sync-labels.yaml@master
+    permissions:
+      contents: read
+      issues: write
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}

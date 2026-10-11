@@ -15,6 +15,9 @@ on:
 jobs:
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/changelog.yaml@master
+    permissions:
+      contents: write
+      pull-requests: write
     with:
       repository-name: ${{ github.repository }}
     secrets:

@@ -1,17 +1,12 @@
-name-template: v$RESOLVED_VERSION
-tag-template: v$RESOLVED_VERSION
+name-template: $RESOLVED_VERSION
+tag-template: $RESOLVED_VERSION
 version-template: $MAJOR
-version-resolver:
-  major:
-    labels:
-      - 'major'
-  minor:
-    labels:
-      - 'minor'
-  patch:
-    labels:
-      - 'patch'
-  default: major
+categories:
+  - type: 'pre-exclude'
+    when:
+      label: 'skip-changelog'
+  - type: 'version-resolver'
+    semver-increment: 'major'
 template: |
   ## What’s Changed
 
