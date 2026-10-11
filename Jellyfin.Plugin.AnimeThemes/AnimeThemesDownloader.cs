@@ -195,23 +195,49 @@ public class AnimeThemesDownloader : IDisposable
             if (isAudio)
             {
                 var audio = theme.Audio;
-                if (audio is null)
+                var name = audio is null ? null : Path.GetFileName(audio.Filename);
+                if (audio is null || string.IsNullOrEmpty(name))
                 {
+                    _logger.LogWarning("Skipping theme {Theme}: API response contained no usable audio file name", theme.Theme.Id);
                     continue;
                 }
 
-                yield return (audio.Link, Path.Combine(ThemeMusicDirectory, $"{audio.Filename}__{settings.Volume * 100:0}.mp3"));
+                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{name}__{settings.Volume * 100:0}.mp3"));
             }
             else
             {
-                yield return (theme.Video.Link, Path.Combine(ThemeVideoDirectory, $"{theme.Video.Filename}__{settings.Volume * 100:0}.webm"));
+                var name = Path.GetFileName(theme.Video.Filename);
+                if (string.IsNullOrEmpty(name))
+                {
+                    _logger.LogWarning("Skipping theme {Theme}: API response contained no usable video file name", theme.Theme.Id);
+                    continue;
+                }
+
+                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{name}__{settings.Volume * 100:0}.webm"));
             }
         }
     }
 
+    /// <summary>
+    /// Combines a root path with a relative path. The relative part must not be rooted,
+    /// so untrusted file names cannot escape the intended directory.
+    /// </summary>
+    /// <param name="root">Root path.</param>
+    /// <param name="relative">Relative path below <paramref name="root"/>.</param>
+    /// <returns>The combined path.</returns>
+    private static string CombineRelative(string root, string relative)
+    {
+        if (Path.IsPathRooted(relative))
+        {
+            throw new ArgumentException("Path must be relative.", nameof(relative));
+        }
+
+        return root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar + relative;
+    }
+
     private void RemoveFile(BaseItem series, string filename)
     {
-        var path = Path.Combine(series.ContainingFolderPath, filename);
+        var path = CombineRelative(series.ContainingFolderPath, filename);
         if (File.Exists(path))
         {
             File.Delete(path);
@@ -223,7 +249,7 @@ public class AnimeThemesDownloader : IDisposable
         var directory = mediaType == MediaType.Audio ? ThemeMusicDirectory : ThemeVideoDirectory;
         var searchPattern = mediaType == MediaType.Audio ? "*.mp3" : "*.webm";
 
-        var path = Path.Combine(series.ContainingFolderPath, directory);
+        var path = CombineRelative(series.ContainingFolderPath, directory);
         if (!Directory.Exists(path))
         {
             return;
@@ -244,7 +270,7 @@ public class AnimeThemesDownloader : IDisposable
 
     private async ValueTask<bool> Download(MediaType type, string url, BaseItem item, string relativePath, double volume = 1.0, CancellationToken cancellationToken = default)
     {
-        var path = Path.Combine(item.ContainingFolderPath, relativePath);
+        var path = CombineRelative(item.ContainingFolderPath, relativePath);
         if (File.Exists(path))
         {
             // Nothing to do
@@ -266,7 +292,7 @@ public class AnimeThemesDownloader : IDisposable
             }
 
             // Convert OGG
-            var process = new Process
+            using var process = new Process
             {
                 StartInfo = new ProcessStartInfo
                 {
@@ -323,7 +349,7 @@ public class AnimeThemesDownloader : IDisposable
 
             _logger.LogInformation("[{Id}] Successfully downloaded theme song!", item.Id);
         }
-        catch (Exception e)
+        catch (Exception e) when (e is not OperationCanceledException)
         {
             _logger.LogError(e, "Download failed");
             return false;

@@ -71,7 +71,7 @@ public abstract class BaseThemeSearchTask
             .SelectMany((chunk) => _downloader.ResolveItems(chunk, configuration, cancellationToken))
             .ToListAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var semaphore = new SemaphoreSlim(1, 1);
+        using var semaphore = new SemaphoreSlim(1, 1);
         int counter = 0;
         int count = itemsWithAnime.Count;
 
