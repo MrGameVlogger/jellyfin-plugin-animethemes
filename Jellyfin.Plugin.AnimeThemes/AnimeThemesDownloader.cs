@@ -56,7 +56,7 @@ public class AnimeThemesDownloader : IDisposable
     {
         _mediaEncoder = mediaEncoder;
         _logger = logger;
-        _client = new HttpClient();
+        _client = clientFactory.CreateClient("AnimeThemesMedia");
         _api = new AnimeThemesApi(clientFactory, logger);
     }
 
@@ -142,7 +142,11 @@ public class AnimeThemesDownloader : IDisposable
             {
                 await item.RefreshMetadata(cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e) when (e is not OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception e)
             {
                 _logger.LogError(e, "[{Id}] Metadata refresh failed", item.Id);
             }
@@ -426,10 +430,15 @@ public class AnimeThemesDownloader : IDisposable
             }
 
             File.Move(tempOutput, path, true);
-            _logger.LogInformation("[{Id}] Successfully downloaded theme {Type}", item.Id, type == MediaType.Video ? "video" : "audio");
+            _logger.LogInformation("[{Id}] {Type}: theme downloaded successfully", item.Id, type);
         }
-        catch (Exception e) when (e is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            throw;
+        }
+        catch (Exception e)
+        {
+            // Timeouts surface as TaskCanceledException too, but they must not abort the run.
             _logger.LogError(e, "Download failed");
             return false;
         }

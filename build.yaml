@@ -1,7 +1,7 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 7.1.0.0
+version: 7.1.1.0
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
@@ -15,9 +15,6 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - feat!: theme sync is now always on: every run downloads new themes, removes outdated ones and refreshes replaced content (the "Enforce conformity" option is gone)
-  - fix: cleanup runs after downloads, so a failed download can no longer remove existing themes
-  - fix: only files created by the plugin are ever deleted; hand-made theme files are left alone
-  - fix: partial ffmpeg output is no longer kept as a valid theme (results are finalized atomically)
-  - fix: theme deletions now trigger a metadata refresh
-  - fix: invalid include/exclude library regexes abort the run with a clear error instead of crashing
+  - fix: theme downloads are retried on transient errors — the AnimeThemes CDN sheds parallel load with 503s, which previously failed every download in a burst (the API client had retries, the media client did not)
+  - fix: download timeouts no longer abort the entire run
+  - fix: theme downloads now identify themselves with the product user-agent and allow up to 10 minutes for large files

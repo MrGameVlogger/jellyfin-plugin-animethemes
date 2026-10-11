@@ -116,10 +116,15 @@ public sealed class AnimeThemesApi : IDisposable
 
             response = await result.Content.ReadFromJsonAsync<AnimeResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception e) when (e is not OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception e)
         {
             // A lookup failure must not abort the whole run; the affected items are simply
-            // skipped and picked up again on the next run.
+            // skipped and picked up again on the next run. Timeouts surface as
+            // TaskCanceledException too, but they are not user cancellation.
             _logger.LogError(e, "AnimeThemes API lookup failed");
         }
 

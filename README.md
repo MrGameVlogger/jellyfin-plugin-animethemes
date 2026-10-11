@@ -47,7 +47,7 @@ Audio and video settings are configured separately, and again separately for ser
 
 | Configuration                           | Description                                                                                               |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| Degree of parallelism                   | How many items should be downloaded in parallel. Default is set to 1 to go easy on the servers.           |
+| Degree of parallelism                   | How many items should be downloaded in parallel. Default is set to 1 to go easy on the servers. Higher values can hit the AnimeThemes CDN's rate limit; failed downloads are retried automatically and picked up on the next run. |
 | Included libraries (regex)              | Only libraries matching this regex are searched for anime themes. Case-insensitive.                       |
 | Excluded libraries (regex)              | Matching libraries are ignored even if they match the include regex. Leave empty to ignore.               |
 | Ignore themes that overlap with episode | Some shows transition into their themes. Use this setting to filter those themes out.                     |

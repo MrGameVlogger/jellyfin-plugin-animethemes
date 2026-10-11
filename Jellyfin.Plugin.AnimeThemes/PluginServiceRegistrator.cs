@@ -27,5 +27,15 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
                 c.DefaultRequestHeaders.UserAgent.Add(productHeader);
             })
             .AddHttpMessageHandler<PollyResilienceHandler>();
+
+        // The media CDN sheds concurrent load with 503s, so theme downloads need the same
+        // retry treatment as the API. Downloads are large files on absolute URLs.
+        serviceCollection
+            .AddHttpClient("AnimeThemesMedia", c =>
+            {
+                c.DefaultRequestHeaders.UserAgent.Add(productHeader);
+                c.Timeout = TimeSpan.FromMinutes(10);
+            })
+            .AddHttpMessageHandler<PollyResilienceHandler>();
     }
 }
