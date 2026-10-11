@@ -1,9 +1,9 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 6
-targetAbi: "10.11.3.0"
-framework: "net9.0"
+version: 7
+targetAbi: "12.0.0.0"
+framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
 description: >
   Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe.
@@ -11,8 +11,8 @@ description: >
   **Since the AniDB ID is used to find the matching themes, you'll need to install the AniDB plugin.**
 
 category: "Metadata"
-owner: "EusthEnoptEron"
+owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - fix: actually fill chunks (#43) @EusthEnoptEron
+  - feat: support Jellyfin 12 (.NET 10)
