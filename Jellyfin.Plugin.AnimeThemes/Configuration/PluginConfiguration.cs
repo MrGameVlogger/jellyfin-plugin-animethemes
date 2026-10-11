@@ -42,7 +42,7 @@ public class PluginConfiguration : BasePluginConfiguration
     }
 
     /// <summary>
-    /// Gets or sets a string setting.
+    /// Gets or sets how many themes are downloaded in parallel.
     /// </summary>
     public int DegreeOfParallelism { get; set; }
 

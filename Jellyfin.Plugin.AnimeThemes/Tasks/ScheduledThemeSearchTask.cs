@@ -33,7 +33,7 @@ public class ScheduledThemeSearchTask : BaseThemeSearchTask, IScheduledTask
     public string Key { get; } = "animethemes.search";
 
     /// <inheritdoc />
-    public string Description { get; } = "Updates all themes according to the settings. This also happens after every full scan.";
+    public string Description { get; } = "Updates all themes according to the settings.";
 
     /// <inheritdoc />
     public string Category { get; } = "Theme Songs";

@@ -11,7 +11,7 @@ public class MediaTypeConfiguration
     public FetchType FetchType { get; set; }
 
     /// <summary>
-    /// Gets or sets a value indicating whether some true or false setting is enabled..
+    /// Gets or sets a value indicating whether themes that overlap with the episode are ignored.
     /// </summary>
     public bool IgnoreOverlapping { get; set; }
 

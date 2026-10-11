@@ -187,15 +187,6 @@
             const seriesTitle = document.querySelector("#at-series-title");
             const moviesTitle = document.querySelector("#at-movies-title");
 
-            async function getLibraries() {
-                const items = await ApiClient.getItems();
-                if (!items || !items.Items) {
-                    return [];
-                }
-
-                return items.Items;
-            }
-
             function selectMovies() {
                 // Make sure we grab the changes before switching.
                 readConfigFromHtml();

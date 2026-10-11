@@ -15,7 +15,7 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// <param name="Overlap">The degree to which the sequence and episode content overlap [None, Transition, Over].</param>
 /// <param name="Link">The URL to stream the file from storage.</param>
 /// <param name="Creditless">Whether the video is creditless.</param>
-/// <param name="Audio">Audio for the video.</param>
+/// <param name="Audio">Audio for the video, if present in the payload.</param>
 public record Video(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("basename")]

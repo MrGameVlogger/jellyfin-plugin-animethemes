@@ -23,8 +23,8 @@ public sealed class AnimeThemesApi : IDisposable
     /// <summary>
     /// Initializes a new instance of the <see cref="AnimeThemesApi"/> class.
     /// </summary>
-    /// <param name="logger">Logger.</param>
     /// <param name="clientFactory">Client factory.</param>
+    /// <param name="logger">Logger.</param>
     public AnimeThemesApi(IHttpClientFactory clientFactory, ILogger<AnimeThemesDownloader> logger)
     {
         _logger = logger;
