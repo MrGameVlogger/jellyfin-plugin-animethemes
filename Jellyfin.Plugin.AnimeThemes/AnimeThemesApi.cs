@@ -105,6 +105,7 @@ public sealed class AnimeThemesApi : IDisposable
         """;
 
     private readonly HttpClient _client;
+    private readonly AnimeRelations _relations;
     private readonly ILogger<AnimeThemesDownloader> _logger;
 
     /// <summary>
@@ -124,10 +125,12 @@ public sealed class AnimeThemesApi : IDisposable
     /// Initializes a new instance of the <see cref="AnimeThemesApi"/> class.
     /// </summary>
     /// <param name="clientFactory">Client factory.</param>
+    /// <param name="relations">Season relations used to prune franchise siblings.</param>
     /// <param name="logger">Logger.</param>
-    public AnimeThemesApi(IHttpClientFactory clientFactory, ILogger<AnimeThemesDownloader> logger)
+    public AnimeThemesApi(IHttpClientFactory clientFactory, AnimeRelations relations, ILogger<AnimeThemesDownloader> logger)
     {
         _logger = logger;
+        _relations = relations;
         _client = clientFactory.CreateClient("AnimeThemes");
     }
 
@@ -175,14 +178,19 @@ public sealed class AnimeThemesApi : IDisposable
             list.Add(anime);
         }
 
-        // Every requested id maps to its matches plus the other seasons of their series.
+        // Every requested id maps to its matches plus the seasons of their series.
         var result = new Dictionary<int, Anime[]>(idList.Length);
         foreach (var id in idList)
         {
             var expanded = new Dictionary<int, Anime>();
             foreach (var root in byAniId.GetValueOrDefault(id) ?? [])
             {
-                foreach (var anime in ExpandWithSeries(root))
+                // Series groups are franchise-wide: the title/format/year filter keeps same-show
+                // candidates and AniList relations then separate seasons from the rest.
+                var candidates = ExpandWithSeries(root).ToList();
+                var seasons = await _relations.PruneToSeasonsAsync(root, candidates, cancellationToken).ConfigureAwait(false);
+
+                foreach (var anime in seasons)
                 {
                     expanded.TryAdd(anime.Id, anime);
                 }

@@ -36,10 +36,14 @@ Single project (`Jellyfin.Plugin.AnimeThemes`), no test project. Execution flow:
    - collects the item's AniDB provider id (`TryGetProviderId("AniDB", …)`, **case-insensitive**
      dictionary — any casing works) and any **child seasons'** AniDB ids
    - `AnimeThemesApi.FindByAniDbId` batches ids (25/request) and expands each match with its
-     AnimeThemes `series → anime` siblings that are **seasons of the same show** (`IsSameShow`:
-     same format + title match after stripping season markers + premiere year within 10). The
-     series grouping is franchise-wide — without the filter, spin-offs, movies and remakes leak in
-     (remakes share the exact title; only the year separates them)
+     AnimeThemes `series → anime` siblings that are **seasons of the same show**. The series
+     grouping is franchise-wide (spin-offs, movies, remakes — remakes share the exact title, only
+     the year separates them), so siblings pass two gates: `IsSameShow` (same format + title match
+     after stripping season markers + premiere year within 10) and `AnimeRelations` (AniList
+     prequel/sequel reachability — seasons chain through these; `SPIN_OFF`/`ALTERNATIVE` do not).
+     AniList ids come from the AnimeThemes resources; relations are cached in
+     `animethemes-relations.json` beside the plugin config and unknown data falls back to the
+     title heuristic
    - yields per-item theme pools (`ItemWithAnime`) covering all matched anime
 4. `AnimeThemesDownloader.HandleAsync` processes items through `Parallel.ForEachAsync`
    (parallelism config, clamped ≥ 1): theme selection (`GetBestThemes` filters + `Rate()`
@@ -51,6 +55,8 @@ Other pieces:
 - `AnimeThemesApi.cs` — GraphQL client. `findAnimeByExternalSite(site: ANIDB, id: [Int!])` is
   purpose-built for this plugin; the JSON:API it used to call is **deprecated and will be
   removed** — do not use it. GraphQL errors arrive as HTTP 200 + `errors[]`.
+- `AnimeRelations.cs` — AniList relation lookups (prequel/sequel graph) used to tell seasons from
+  spin-offs; batched 15 ids/request with 500 ms pacing because AniList rate-limits by query cost.
 - `PluginServiceRegistrator.cs` — DI; two named HttpClients (`AnimeThemes` for the API,
   `AnimeThemesMedia` for CDNs), both behind `PollyResilienceHandler` (retries 408/429/5xx,
   honors `Retry-After`). `AnimeThemesDownloader` is a **singleton** (it is captured by the

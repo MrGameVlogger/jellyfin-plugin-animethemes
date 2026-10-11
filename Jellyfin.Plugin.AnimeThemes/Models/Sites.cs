@@ -9,4 +9,9 @@ public static class Sites
     /// Site for AniDB. Matches the <c>ANIDB</c> value of the <c>ResourceSite</c> GraphQL enum.
     /// </summary>
     public const string ANIDB = "ANIDB";
+
+    /// <summary>
+    /// Site for AniList. Matches the <c>ANILIST</c> value of the <c>ResourceSite</c> GraphQL enum.
+    /// </summary>
+    public const string ANILIST = "ANILIST";
 }

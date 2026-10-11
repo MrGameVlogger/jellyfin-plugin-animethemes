@@ -68,13 +68,14 @@ public class AnimeThemesDownloader : IDisposable
     /// <param name="clientFactory">Client factory.</param>
     /// <param name="logger">Logger.</param>
     /// <param name="libraryManager">Library manager.</param>
-    public AnimeThemesDownloader(IMediaEncoder mediaEncoder, IHttpClientFactory clientFactory, ILogger<AnimeThemesDownloader> logger, ILibraryManager libraryManager)
+    /// <param name="relations">Season relations used to prune franchise siblings.</param>
+    public AnimeThemesDownloader(IMediaEncoder mediaEncoder, IHttpClientFactory clientFactory, ILogger<AnimeThemesDownloader> logger, ILibraryManager libraryManager, AnimeRelations relations)
     {
         _mediaEncoder = mediaEncoder;
         _logger = logger;
         _libraryManager = libraryManager;
         _client = clientFactory.CreateClient("AnimeThemesMedia");
-        _api = new AnimeThemesApi(clientFactory, logger);
+        _api = new AnimeThemesApi(clientFactory, relations, logger);
     }
 
     /// <summary>

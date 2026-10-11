@@ -13,6 +13,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
     public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
     {
         serviceCollection.AddSingleton<AnimeThemesDownloader>();
+        serviceCollection.AddSingleton<AnimeRelations>();
 
         var productHeader = new ProductInfoHeaderValue(
             "jf-plugin-animethemes",
@@ -35,6 +36,15 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
             {
                 c.DefaultRequestHeaders.UserAgent.Add(productHeader);
                 c.Timeout = TimeSpan.FromMinutes(10);
+            })
+            .AddHttpMessageHandler<PollyResilienceHandler>();
+
+        // AniList supplies the prequel/sequel relations used to tell seasons from spin-offs.
+        serviceCollection
+            .AddHttpClient("AniList", c =>
+            {
+                c.BaseAddress = new Uri("https://graphql.anilist.co/");
+                c.DefaultRequestHeaders.UserAgent.Add(productHeader);
             })
             .AddHttpMessageHandler<PollyResilienceHandler>();
     }

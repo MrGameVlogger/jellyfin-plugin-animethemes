@@ -23,9 +23,11 @@ sync with AnimeThemes:
 - Themes that no longer match your configuration — or that were removed upstream — are deleted.
 - Files whose content changed upstream are re-downloaded (the source size is part of the file name,
   so a changed file counts as a new file).
-- **Multi-season shows are fully covered**: themes are collected from every season of the series —
-  seasons of the *same show* in its AnimeThemes series (spin-offs, movies and remakes are filtered
-  out) and any Jellyfin seasons that carry their own AniDB id.
+- **Multi-season shows are fully covered**: themes are collected from every season of the series and
+  any Jellyfin seasons that carry their own AniDB id. AnimeThemes series groups are franchise-wide,
+  so siblings are filtered to the same show (format/title/year) and then verified against AniList
+  relations — seasons are prequel/sequel-linked to the show, while spin-offs, movies and remakes
+  are not.
 - **Openings play first**: file names are prefixed with the theme order (e.g. `0-01_` for the first
   OP, `2-03_` for the third ED), so Jellyfin's alphabetical theme playback runs OPs before EDs.
 - Files the plugin did not create are never touched.
