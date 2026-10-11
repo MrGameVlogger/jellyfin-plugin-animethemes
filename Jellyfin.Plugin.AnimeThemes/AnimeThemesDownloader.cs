@@ -115,7 +115,7 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>Task that runts until item is done processing.</returns>
     public async ValueTask HandleAsync(BaseItem item, Anime anime, PluginConfiguration configuration, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("[{Id}] Attempting to filter theme songs for: {Name} (AniDB={AniId})", item.Id, item.Name, anime.Id);
+        _logger.LogInformation("[{Id}] Attempting to filter theme songs for: {Name} (AniDB={AniDbId}, AnimeThemes={AnimeThemesId})", item.Id, item.Name, anime.AniDbId, anime.Id);
 
         bool isMovie = item.GetBaseItemKind() == BaseItemKind.Movie;
         var collectionTypeConfig = isMovie ? configuration.MovieSettings : new CollectionTypeConfiguration { AudioSettings = configuration.AudioSettings, VideoSettings = configuration.VideoSettings };
@@ -148,6 +148,19 @@ public class AnimeThemesDownloader : IDisposable
 
         // Turn them into downloadable links
         var links = ExtractLinks(type, requiredThemes, settings).ToArray();
+
+        if (links.Length == 0)
+        {
+            var availableVideos = anime.Themes.Sum(theme => theme.Entries.Sum(entry => entry.Videos.Nodes.Count));
+            if (availableVideos == 0)
+            {
+                _logger.LogInformation("[{Id}] {Type}: AnimeThemes has no themes for this anime yet", item.Id, type);
+            }
+            else
+            {
+                _logger.LogInformation("[{Id}] {Type}: none of the {Count} available theme video(s) match the configured filters", item.Id, type, availableVideos);
+            }
+        }
 
         // Before we start the download, make sure the folders are in a clean state.
         if (forceSync)
