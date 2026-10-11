@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace Jellyfin.Plugin.AnimeThemes.Models;
 
 /// <summary>
-/// Types of overlap between episode and theme.
+/// Types of overlap between episode and theme. Maps the <c>VideoOverlap</c> GraphQL enum.
 /// </summary>
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum OverlapType
@@ -16,6 +16,7 @@ public enum OverlapType
     /// <summary>
     /// Some overlap.
     /// </summary>
+    [JsonStringEnumMemberName("TRANS")]
     Transition,
 
     /// <summary>

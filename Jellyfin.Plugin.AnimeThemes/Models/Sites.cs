@@ -6,7 +6,7 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 public static class Sites
 {
     /// <summary>
-    /// Site for AniDB.
+    /// Site for AniDB. Matches the <c>ANIDB</c> value of the <c>ResourceSite</c> GraphQL enum.
     /// </summary>
-    public const string ANIDB = "aniDB";
+    public const string ANIDB = "ANIDB";
 }

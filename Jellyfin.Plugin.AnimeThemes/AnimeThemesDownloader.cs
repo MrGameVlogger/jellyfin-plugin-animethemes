@@ -398,7 +398,7 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>A filtered and sorted and flattened enumerable of themes.</returns>
     private IEnumerable<FlattenedTheme> GetBestThemes(Anime anime, MediaTypeConfiguration settings)
     {
-        return anime.Themes.SelectMany(theme => theme.Entries.SelectMany(entry => entry.Videos.Select(video => Wrap(theme, entry, video))))
+        return anime.Themes.SelectMany(theme => theme.Entries.SelectMany(entry => entry.Videos.Nodes.Select(video => Wrap(theme, entry, video))))
             .Where(it =>
             {
                 if (it.Audio is not null)

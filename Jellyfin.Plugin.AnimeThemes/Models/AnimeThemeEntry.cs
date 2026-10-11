@@ -1,12 +1,12 @@
-using System.Collections.ObjectModel;
 using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.AnimeThemes.Models;
 
 /// <summary>
-/// An anime theme entry API resource represents a version of an anime theme.
+/// An anime theme entry represents a version of an anime theme.
 ///
 /// For example, the ED theme of the Bakemonogatari anime has three anime theme entries to represent three versions.
+/// Subset of the <c>AnimeThemeEntry</c> GraphQL type.
 /// </summary>
 /// <param name="Id">The primary key of the resource.</param>
 /// <param name="Version">The version number of the theme.</param>
@@ -23,5 +23,5 @@ public record AnimeThemeEntry(
     [property: JsonPropertyName("nsfw")] bool Nsfw,
     [property: JsonPropertyName("spoiler")]
     bool Spoiler,
-    [property: JsonPropertyName("videos")] Collection<Video> Videos
+    [property: JsonPropertyName("videos")] VideoConnection Videos
 );

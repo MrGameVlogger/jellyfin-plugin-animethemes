@@ -1,22 +1,77 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
-using System.Text.Json;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.AnimeThemes.Models;
-using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Logging;
 
 namespace Jellyfin.Plugin.AnimeThemes;
 
 /// <summary>
-/// Represents the AnimeThemes API.
+/// Represents the AnimeThemes GraphQL API.
 /// </summary>
+/// <remarks>
+/// See <see href="https://api-docs.animethemes.moe"/>. The API is limited to 90 requests per minute;
+/// themes are therefore resolved in batched queries.
+/// </remarks>
 public sealed class AnimeThemesApi : IDisposable
 {
+    private const string FindAnimeByExternalSiteQuery = """
+        query ($ids: [Int!]!) {
+            findAnimeByExternalSite(site: ANIDB, id: $ids) {
+                id
+                slug
+                year
+                title {
+                    romaji
+                }
+                resources {
+                    nodes {
+                        site
+                        externalId
+                    }
+                }
+                animethemes {
+                    id
+                    type
+                    sequence
+                    slug
+                    group {
+                        name
+                    }
+                    animethemeentries {
+                        id
+                        version
+                        episodes
+                        nsfw
+                        spoiler
+                        videos {
+                            nodes {
+                                id
+                                basename
+                                filename
+                                source
+                                overlap
+                                nc
+                                link
+                                audio {
+                                    id
+                                    path
+                                    filename
+                                    mimetype
+                                    link
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """;
+
     private readonly HttpClient _client;
     private readonly ILogger<AnimeThemesDownloader> _logger;
 
@@ -48,28 +103,24 @@ public sealed class AnimeThemesApi : IDisposable
             throw new ArgumentOutOfRangeException(nameof(ids));
         }
 
-        // @formatter:off
-        var arguments = new Dictionary<string, string?>
-        {
-            { "filter[resource][external_id]", string.Join(",", idList.Select(it => it.ToString(CultureInfo.InvariantCulture))) },
-            { "filter[resource][site]", Sites.ANIDB },
-            { "filter[has]", "resources" },
-            { "page[size]", idList.Length.ToString(CultureInfo.InvariantCulture) },
-            { "include", "animethemes.animethemeentries.videos.audio,resources" },
-        };
-        // @formatter:on
+        var payload = new { query = FindAnimeByExternalSiteQuery, variables = new { ids = idList } };
 
-        var uri = QueryHelpers.AddQueryString("/anime/", arguments);
-
-        _logger.LogInformation("Fetching from API: {Uri} (length={Length})", uri, uri.Length);
-        var result = await _client.GetAsync(uri, cancellationToken).ConfigureAwait(false);
+        _logger.LogInformation("Querying the AnimeThemes GraphQL API for {Count} AniDB ids", idList.Length);
+        var result = await _client.PostAsJsonAsync("/", payload, cancellationToken).ConfigureAwait(false);
         result.EnsureSuccessStatusCode();
 
-        var content = await result.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        await using var contentDisposal = content.ConfigureAwait(false);
+        var response = await result.Content.ReadFromJsonAsync<AnimeResponse>(cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var response = await JsonSerializer.DeserializeAsync<AnimeResponse>(content, cancellationToken: cancellationToken).ConfigureAwait(false);
-        var animeByAniId = response?.Anime.GroupBy(a => a.AniDbId!.Value).ToDictionary(a => a.Key, a => a.ToArray()) ?? new Dictionary<int, Anime[]>();
+        if (response?.Errors is { Count: > 0 })
+        {
+            _logger.LogError("AnimeThemes API returned errors: {Errors}", string.Join("; ", response.Errors.Select(it => it.Message)));
+        }
+
+        var found = response?.Data?.Anime ?? [];
+        var animeByAniId = found
+            .Where(a => a.AniDbId.HasValue)
+            .GroupBy(a => a.AniDbId!.Value)
+            .ToDictionary(a => a.Key, a => a.ToArray());
 
         _logger.LogInformation("Of a total of {TotalCount} shows, we were able to find entries for {FinalCount} shows", idList.Length, animeByAniId.Count);
 

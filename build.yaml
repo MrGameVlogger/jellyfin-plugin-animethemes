@@ -16,3 +16,5 @@ artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
   - feat: support Jellyfin 12 (.NET 10)
+  - feat: migrate to the AnimeThemes GraphQL API (the JSON:API is deprecated and will be removed)
+  - fix: correctness, robustness and security hardening

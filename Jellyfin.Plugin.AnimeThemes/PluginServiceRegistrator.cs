@@ -23,7 +23,7 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection
             .AddHttpClient("AnimeThemes", c =>
             {
-                c.BaseAddress = new Uri("https://api.animethemes.moe");
+                c.BaseAddress = new Uri("https://graphql.animethemes.moe/");
                 c.DefaultRequestHeaders.UserAgent.Add(productHeader);
             })
             .AddHttpMessageHandler<PollyResilienceHandler>();

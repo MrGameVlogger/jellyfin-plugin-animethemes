@@ -4,9 +4,11 @@ using System.Text.Json.Serialization;
 namespace Jellyfin.Plugin.AnimeThemes.Models;
 
 /// <summary>
-/// Represents a response to the anime endpoint.
+/// Represents a GraphQL response envelope.
 /// </summary>
-/// <param name="Anime">List of found anime.</param>
+/// <param name="Data">The response data, if any.</param>
+/// <param name="Errors">The response errors, if any.</param>
 public record AnimeResponse(
-    [property: JsonPropertyName("anime")] Collection<Anime> Anime
+    [property: JsonPropertyName("data")] AnimeData? Data,
+    [property: JsonPropertyName("errors")] Collection<GraphQLError>? Errors
 );
