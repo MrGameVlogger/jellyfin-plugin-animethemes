@@ -1,7 +1,7 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 7.2.0.0
+version: 7.3.0.0
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
@@ -15,8 +15,6 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - feat: optional loudness normalization (ffmpeg loudnorm) so themes sit at a consistent level next to dialogue regardless of source loudness (addresses upstream #4 and #20)
-  - feat: numeric volume read-out and finer control (step 0.01)
-  - feat: the task now reports how many items were skipped for lacking an AniDB provider id (addresses upstream #22 and #19)
-  - fix: media downloads are paced with a global throttle so parallel runs do not trip the CDN rate limit (addresses upstream #46)
-  - docs: where theme files are stored and a troubleshooting section
+  - feat: multi-season shows are fully covered — the other seasons of a series (its AnimeThemes series and seasons with their own AniDB ids) are queried and their themes collected too
+  - feat: openings play before insert songs and endings; the theme order is part of the file name (upstream #16)
+  - fix: existing theme files are renamed to the new ordered names instead of being re-downloaded

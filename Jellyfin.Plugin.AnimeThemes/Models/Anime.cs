@@ -16,7 +16,9 @@ public record Anime(
     [property: JsonPropertyName("resources")]
     ResourceConnection Resources,
     [property: JsonPropertyName("animethemes")]
-    Collection<AnimeTheme> Themes
+    Collection<AnimeTheme> Themes,
+    [property: JsonPropertyName("series")]
+    SeriesConnection? Series
 )
 {
     /// <summary>

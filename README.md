@@ -23,6 +23,10 @@ sync with AnimeThemes:
 - Themes that no longer match your configuration — or that were removed upstream — are deleted.
 - Files whose content changed upstream are re-downloaded (the source size is part of the file name,
   so a changed file counts as a new file).
+- **Multi-season shows are fully covered**: themes are collected from every season of the series
+  (its AnimeThemes series and any seasons that carry their own AniDB id), so nothing is missed.
+- **Openings play first**: file names are prefixed with the theme order (e.g. `0-01_` for the first
+  OP, `2-03_` for the third ED), so Jellyfin's alphabetical theme playback runs OPs before EDs.
 - Files the plugin did not create are never touched.
 
 Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure
@@ -65,9 +69,9 @@ Theme files live next to the media they belong to — there is no configurable l
 - theme songs: `<series or movie folder>/theme-music/*.mp3`
 - theme videos: `<series or movie folder>/backdrops/*.webm`
 
-The file names encode the theme, the processing settings and the upstream content size
-(e.g. `Show-OP1__50__12345678.webm`), which is how the plugin knows what to keep, refresh or remove.
-Files placed in these folders by hand are never touched.
+The file names encode the theme order, the processing settings and the upstream content size
+(e.g. `0-01_Show-OP1__50__12345678.webm`), which is how the plugin knows what to keep, refresh or
+remove. Files placed in these folders by hand are never touched.
 
 ## Troubleshooting
 
