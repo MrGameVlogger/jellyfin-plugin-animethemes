@@ -12,8 +12,8 @@
                 "changelog": "- feat: support Jellyfin 12 (.NET 10)",
                 "targetAbi": "12.0.0.0",
                 "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7/animethemes_7.0.0.0.zip",
-                "checksum": "fcc545dd3e06319b802267925286e726",
-                "timestamp": "2026-10-11T07:05:10Z"
+                "checksum": "f425703cfc161042475d822bdffccccc",
+                "timestamp": "2026-10-11T07:37:07Z"
             },
             {
                 "checksum": "ba6f40b1d8c007980bab3e6931b48d7e",
