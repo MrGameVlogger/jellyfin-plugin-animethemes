@@ -7,7 +7,7 @@ on:
 
 jobs:
   call:
-    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/sync-labels.yaml@master
+    uses: jellyfin/jellyfin-meta-plugins/.github/workflows/sync-labels.yaml@5ebf9f9455736773ab6f94cdb19fb903ece41b83 # master
     permissions:
       contents: read
       issues: write
