@@ -20,10 +20,11 @@ namespace Jellyfin.Plugin.AnimeThemes;
 public sealed class AnimeThemesApi : IDisposable
 {
     /// <summary>
-    /// Number of AniDB ids resolved per request. Kept low because every match also pulls in the
-    /// full theme tree of its series (the seasons of the show).
+    /// Number of AniDB ids resolved per request. Every match also pulls in the full theme tree of
+    /// its series (the seasons of the show), so this is kept well below the API's query complexity
+    /// limit while staying small enough that a run stays under the 90 requests/minute budget.
     /// </summary>
-    private const int QueryBatchSize = 10;
+    private const int QueryBatchSize = 25;
 
     private const string FindAnimeByExternalSiteQuery = """
         query ($ids: [Int!]!) {

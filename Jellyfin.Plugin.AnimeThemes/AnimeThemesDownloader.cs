@@ -440,6 +440,14 @@ public class AnimeThemesDownloader : IDisposable
         }
 
         var legacyName = match.Groups["legacy"].Value;
+
+        // A name that itself looks ordered belongs to another (already ordered) theme, not to a
+        // pre-ordering version of this one. Renaming it would steal that theme's file.
+        if (OrderedThemeFilePattern.IsMatch(legacyName))
+        {
+            return false;
+        }
+
         var legacyPath = CombineRelative(Path.GetDirectoryName(path)!, legacyName);
         if (!File.Exists(legacyPath))
         {
