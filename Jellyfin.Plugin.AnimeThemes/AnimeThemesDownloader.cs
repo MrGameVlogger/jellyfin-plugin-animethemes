@@ -59,7 +59,14 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>Whether item should be processed.</returns>
     public bool ShouldUpdate(BaseItem item, PluginConfiguration configuration)
     {
-        return TryGetAniDbId(item, out var id) && !IsSatisfied(item, configuration);
+        if (!TryGetAniDbId(item, out _))
+        {
+            return false;
+        }
+
+        // With force sync every anime is re-checked so newly added themes are picked up
+        // and obsolete ones removed; otherwise items that already have themes are left alone.
+        return configuration.ForceSync || !IsSatisfied(item, configuration);
     }
 
     /// <summary>
