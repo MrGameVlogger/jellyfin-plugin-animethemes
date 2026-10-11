@@ -33,9 +33,14 @@ Also make sure to enable theme music / videos in your display settings.
 
 ## Configuration
 
+Audio and video settings are configured separately, and again separately for series and movies.
+
 | Configuration                           | Description                                                                                               |
 |-----------------------------------------|-----------------------------------------------------------------------------------------------------------|
 | Degree of parallelism                   | How many items should be downloaded in parallel. Default is set to 1 to go easy on the servers.           |
+| Enforce conformity with the configuration | When enabled, every run re-checks every anime and downloads/deletes themes to match the configuration.  |
+| Included libraries (regex)              | Only libraries matching this regex are searched for anime themes. Case-insensitive.                       |
+| Excluded libraries (regex)              | Matching libraries are ignored even if they match the include regex. Leave empty to ignore.               |
 | Ignore themes that overlap with episode | Some shows transition into their themes. Use this setting to filter those themes out.                     |
 | Ignore themes with credits              | Whether to skip themes with credits in them. Useful for video downloads.                                  |
 | Ignore OP themes                        | Use this to control whether OPs are considered.                                                           |
