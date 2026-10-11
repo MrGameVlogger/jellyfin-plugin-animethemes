@@ -15,7 +15,15 @@ from [animethemes.moe](https://animethemes.moe). Both audio files and video file
 
 ## How to use
 
-The plugin creates a new scheduled task that you can configure. By default, it will run every 12 hours.
+The plugin creates a new scheduled task ("Search For Anime Themes") that runs **every 12 hours** by
+default; you can change the interval in Dashboard → Scheduled Tasks.
+
+- Items **without** themes are looked up on every run, so new themes appear on AnimeThemes are picked
+  up automatically within one interval.
+- Items that **already have** themes are left alone. Enable *Enforce conformity with the
+  configuration* to re-check every anime on every run — this also picks up newly added themes and
+  removes themes that no longer match your configuration.
+
 Also make sure to enable theme music / videos in your display settings.
 
 ## How to install
@@ -55,8 +63,8 @@ Versions follow `major.minor.patch.0` (e.g. `7.0.1.0`); the git tag matches the 
 1. Bump `Version`, `AssemblyVersion` and `FileVersion` in `Directory.Build.props` and `version` in
    `build.yaml`, and set `build.yaml`'s `changelog` to the release notes bullets.
    Keep `targetAbi` at `12.0.0.0` so the plugin stays installable on all Jellyfin 12.x servers.
-2. Create a GitHub release with the version as the tag (e.g. `7.0.1.0`). Release Drafter keeps a
-   draft with the accumulated notes ready to paste.
+2. Create a GitHub release with the version as the tag (e.g. `7.0.2.0`) and paste the changelog
+   bullets as the release notes.
 3. The publish workflow builds the plugin, attaches the zip to the release and updates `manifest.json`
    (checksum included) automatically.
 
