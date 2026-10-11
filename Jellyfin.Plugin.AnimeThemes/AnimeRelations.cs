@@ -70,7 +70,8 @@ public sealed class AnimeRelations
     {
         _client = clientFactory.CreateClient("AniList");
         _logger = logger;
-        _cachePath = Path.Combine(applicationPaths.PluginConfigurationsPath, "animethemes-relations.json");
+        _cachePath = applicationPaths.PluginConfigurationsPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar + "animethemes-relations.json";
         LoadCache();
     }
 
@@ -142,12 +143,10 @@ public sealed class AnimeRelations
         while (queue.Count > 0)
         {
             var current = queue.Dequeue();
-            foreach (var next in neighbours.GetValueOrDefault(current) ?? [])
+            foreach (var next in (neighbours.GetValueOrDefault(current) ?? []).Where(next => !reachable.Contains(next)))
             {
-                if (reachable.Add(next))
-                {
-                    queue.Enqueue(next);
-                }
+                reachable.Add(next);
+                queue.Enqueue(next);
             }
         }
 
@@ -191,14 +190,12 @@ public sealed class AnimeRelations
                 return;
             }
 
-            foreach (var id in batch)
+            // Only ids the response actually covered are known; anything else stays unknown so
+            // callers fall back to keeping the candidate.
+            var covered = batch.ToHashSet();
+            foreach (var (id, related) in seasonRelations.Where(it => covered.Contains(it.Key)))
             {
-                // Only ids the response actually covered are known; anything else stays
-                // unknown so callers fall back to keeping the candidate.
-                if (seasonRelations.TryGetValue(id, out var related))
-                {
-                    _cache[id] = related;
-                }
+                _cache[id] = related;
             }
 
             SaveCache();

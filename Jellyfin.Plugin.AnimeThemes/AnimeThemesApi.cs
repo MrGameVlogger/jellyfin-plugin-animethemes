@@ -218,12 +218,9 @@ public sealed class AnimeThemesApi : IDisposable
 
         foreach (var series in anime.Series?.Nodes ?? [])
         {
-            foreach (var sibling in series.Anime?.Nodes ?? [])
+            foreach (var sibling in (series.Anime?.Nodes ?? []).Where(sibling => IsSameShow(anime, sibling)))
             {
-                if (IsSameShow(anime, sibling))
-                {
-                    yield return sibling;
-                }
+                yield return sibling;
             }
         }
     }
