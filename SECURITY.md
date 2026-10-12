@@ -10,12 +10,17 @@
 ## Reporting a Vulnerability
 
 Please use GitHub's [private vulnerability reporting](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/security/advisories/new)
-("Security" tab → "Report a vulnerability") to report security issues.
+("Security" tab → "Report a vulnerability") to report security issues. Please do not open a public
+issue for vulnerabilities.
 
-Please do not open a public issue for vulnerabilities.
+Useful detail to include: the plugin version, Jellyfin version, the log output, and — for anything
+touching file handling — the path that was involved. Theme files are written only under
+`theme-music/` and `backdrops/` next to the media, and file names arriving from the AnimeThemes API
+are treated as untrusted (stripped to their last path segment).
 
-This repository is also covered by:
+## What this repository is covered by
 
 - CodeQL code scanning (C# and GitHub Actions workflows)
-- Secret scanning
+- Secret scanning and push protection
 - Dependabot alerts and security updates
+- Dependency review on pull requests

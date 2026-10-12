@@ -100,8 +100,8 @@ Note on playback order: jellyfin-web requests theme media with `sortBy=Random`
 (`src/components/themeMediaPlayer.js`) — background playback is shuffled **by design** and there is
 no supported server-side lever to change it (shadowing the `ItemSortBy.Random` comparer is
 possible via DI but would break Shuffle everywhere). The numbering only governs theme lists and
-clients that keep list order; README documents a userscript that strips `sortBy=Random` for
-ordered web playback.
+clients that keep list order; `jellyfin-ordered-theme-playback.user.js` in the repo root strips
+`sortBy=Random` in the browser for ordered web playback.
 
 ## Config surface (PluginConfiguration)
 

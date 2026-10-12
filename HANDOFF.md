@@ -90,7 +90,8 @@ case steal another theme's file (now identity-based + wanted-set guard).
    (`IWebFileTransformationWriteService`) — was **closed unmerged**. (The FileTransformation plugin
    works around it by mutating web files on disk; too invasive for this plugin.)
    "Favors the ending" = pools contain more EDs than OPs. `AGENTS.md`/`README.md` document a
-   userscript workaround + the `IgnoreEDs`-on-video trick.
+   installable userscript (`jellyfin-ordered-theme-playback.user.js` in the repo root) + the
+   `IgnoreEDs`-on-video trick.
 5. Theme extras from `theme-music/`/`backdrops/` **keep their filename as their Name** (folder-rule
    extras are not renamed to "Theme Song 2"), so name sorting works — Jellyfin's *alphanumeric
    sorting* zero-pads digit chunks (so `0-02` < `0-10`).
@@ -150,8 +151,9 @@ web-UI feature, out of scope).
 
 ## 8. Known limitations / accepted trade-offs
 
-- Background playback in the **web client is shuffled by design** — documented, with a userscript in
-  `README.md` for those who want ordered playback. The plugin cannot change it.
+- Background playback in the **web client is shuffled by design** — documented; the installable
+  `jellyfin-ordered-theme-playback.user.js` (repo root) strips `sortBy=Random` in the browser for
+  those who want ordered playback. The plugin itself cannot change it.
 - AniList lookups **fall back to the title heuristic** when data is missing (no AniList id, API
   down) — siblings are then kept if they pass format/title/year.
 - Sibling filter uses `|year gap| ≤ 10` — a 11+ year gap between seasons of one show would be

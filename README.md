@@ -73,35 +73,10 @@ That is the order you get in theme **lists** and in clients that keep list order
 
 If you want ordered OP-first playback in the web client, either:
 
-- **Strip the shuffle in your browser** with this userscript (touches only theme requests):
-
-  <details>
-  <summary>Userscript</summary>
-
-  ```js
-  // ==UserScript==
-  // @name        Jellyfin ordered theme playback
-  // @match       https://your-jellyfin-host/*
-  // ==/UserScript==
-  // The theme player asks for sortBy=Random; drop it so the server's
-  // name order (0-01, 0-02 … then 2-…) is used instead.
-  const nativeFetch = window.fetch;
-  window.fetch = (input, init) => {
-      if (typeof input === 'string' && input.includes('/ThemeMedia')) {
-          input = input.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'));
-      }
-      return nativeFetch(input, init);
-  };
-
-  const nativeOpen = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-      return nativeOpen.call(this, method, typeof url === 'string' && url.includes('/ThemeMedia')
-          ? url.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'))
-          : url, ...rest);
-  };
-  ```
-
-  </details>
+- **Install the userscript** — [jellyfin-ordered-theme-playback.user.js](https://raw.githubusercontent.com/MrGameVlogger/jellyfin-plugin-animethemes/main/jellyfin-ordered-theme-playback.user.js)
+  (open the link with a userscript manager such as Tampermonkey installed; it updates itself).
+  It strips the shuffle parameter from theme requests only — see its header comment to restrict it
+  to your own host.
 
 - **Or keep it server-side simple**: enable *Ignore ED themes* for **videos** only — the web client
   prefers background theme videos when they exist, so the random pool becomes openings only.
@@ -110,14 +85,14 @@ If you want ordered OP-first playback in the web client, either:
 
 Audio and video are configured separately — and again separately for series and for movies.
 
-| Setting | What it does |
+| Setting (as shown in the UI) | What it does |
 |---------|--------------|
-| Degree of parallelism | Items processed at once. Default `1` goes easy on the servers; higher values can trip the CDN's rate limit (retries and the next run recover). |
-| Included / Excluded libraries (regex) | Case-insensitive library name filters. |
-| Fetch type | *All* distinct themes, *Single* best match, or *None* (which also removes existing themes of that type). |
+| Degree of Parallelism | Items processed at once. Default `1` goes easy on the servers; higher values can trip the CDN's rate limit (retries and the next run recover). |
+| Included / Excluded Libraries (Regex) | Case-insensitive library name filters. |
+| Fetch type | *All themes*, *Single theme*, or *Don't download* (which also removes existing themes of that type). |
 | Ignore themes that overlap with episode | Drops themes that blend into episode footage. |
-| Ignore themes with credits | Drops themes with credits in them — useful for background video. |
-| Ignore OP / Ignore ED themes | Limit which kinds of themes are considered. |
+| Ignore themes that contain credits | Drops themes with credits in them — useful for background video. |
+| Ignore OP themes / Ignore ED themes | Limit which kinds of themes are considered. |
 | Normalize loudness | Keeps themes at a consistent loudness relative to dialogue (ffmpeg `loudnorm`) instead of a fixed volume. |
 | Volume | Fixed volume baked into the files. `0` mutes videos entirely. Ignored when loudness normalization is on. |
 
