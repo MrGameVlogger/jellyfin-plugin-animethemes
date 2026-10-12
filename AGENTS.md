@@ -152,7 +152,7 @@ release → `jprm repo add ./manifest.json <zip> --plugin-url …` updates `mani
 (checksum, newest-first order) and commits it. `manifest.json` is machine-maintained: never
 hand-edit entries.
 
-## Releasing (see README "Releasing" for the full flow)
+## Releasing (see README "Development & releasing" for the full flow)
 
 - Version = `major.minor.patch.0`, set in **both** `Directory.Build.props` (3 fields) and
   `build.yaml` (`version:`). Git tag == version exactly (`7.3.1.0`).

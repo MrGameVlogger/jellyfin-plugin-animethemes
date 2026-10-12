@@ -1,146 +1,171 @@
 # AnimeThemes for Jellyfin
 
-Plugin for [Jellyfin](https://jellyfin.org/) that fetches anime themes (OPs and EDs)
-from [animethemes.moe](https://animethemes.moe). Both audio files and video files are supported.
+[![Latest release](https://img.shields.io/github/v/release/MrGameVlogger/jellyfin-plugin-animethemes)](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases)
+[![Build](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/build.yaml/badge.svg)](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/build.yaml)
+[![CodeQL](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/scan-codeql.yaml/badge.svg)](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/scan-codeql.yaml)
+[![Jellyfin](https://img.shields.io/badge/Jellyfin-12.x-blue)](https://jellyfin.org/)
 
-**An AniDB ID is used to find matching themes, so you'll need to install the
-[AniDB plugin](https://github.com/jellyfin/jellyfin-plugin-anidb). All other series are ignored.**
+Fetches anime opening and ending themes from [animethemes.moe](https://animethemes.moe) and turns
+them into Jellyfin's native **theme songs** and **theme videos** — the music that plays while you
+browse, and the clips shown on a show's page.
+
+- 🎵 **Theme songs** (`theme-music/*.mp3`) and 🎬 **theme videos** (`backdrops/*.webm`)
+- 🗂️ Kept **in sync automatically** — new themes appear, outdated ones disappear, replaced files refresh
+- 📺 **Multi-season aware** — all seasons of a show, and *only* seasons of that show
+- 🔊 Optional **loudness normalization** so themes sit at a sensible level next to dialogue
+
+> **Requires the [AniDB plugin](https://github.com/jellyfin/jellyfin-plugin-anidb)** — themes are
+> matched by each series' AniDB ID.
 
 ## Compatibility
 
-| Jellyfin | Plugin |
-|----------|--------|
-| 12.0 or newer | v7 or newer |
-| 10.11.x | [v6](https://github.com/EusthEnoptEron/jellyfin-plugin-animethemes/releases/tag/6) (final release for 10.11) |
+| Jellyfin | Use |
+|----------|-----|
+| **12.0 or newer** | [v7+](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases) |
+| 10.11.x | [v6](https://github.com/EusthEnoptEron/jellyfin-plugin-animethemes/releases/tag/6) (final 10.11 release) |
 
-## How to use
+## Install
 
-The plugin creates a new scheduled task ("Search For Anime Themes") that runs **every 12 hours** by
-default; you can change the interval in Dashboard → Scheduled Tasks. Every run keeps your themes in
-sync with AnimeThemes:
+1. In Jellyfin, open **Dashboard → Plugins → Repositories** and add:
 
-- Newly added themes are downloaded, within one interval of appearing on AnimeThemes.
-- Themes that no longer match your configuration — or that were removed upstream — are deleted.
-- Files whose content changed upstream are re-downloaded (the source size is part of the file name,
-  so a changed file counts as a new file).
-- **Multi-season shows are fully covered**: themes are collected from every season of the series and
-  any Jellyfin seasons that carry their own AniDB id. AnimeThemes series groups are franchise-wide,
-  so siblings are filtered to the same show (format/title/year) and then verified against AniList
-  relations — seasons are prequel/sequel-linked to the show, while spin-offs, movies and remakes
-  are not.
+   ```
+   https://raw.githubusercontent.com/MrGameVlogger/jellyfin-plugin-animethemes/main/manifest.json
+   ```
+
+2. **Plugins → Catalog** → install **AnimeThemes** and restart.
+
+Prefer manual installs? [Grab the latest build](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/build.yaml)
+and drop it in your [plugins folder](https://jellyfin.org/docs/general/server/plugins/). Also make
+sure theme media is enabled in your **display settings**.
+
+## How it works
+
+The plugin adds a scheduled task — **Search For Anime Themes** — that runs every **12 hours** by
+default (changeable in Dashboard → Scheduled Tasks). Each run keeps your themes in sync with
+AnimeThemes:
+
+- Newly published themes are downloaded within one interval.
+- Themes that no longer match your configuration, or that were removed upstream, are deleted.
+- Files whose content changed upstream are re-downloaded automatically.
+- **Multi-season shows are fully covered.** AnimeThemes groups whole franchises, so each candidate
+  is verified to be an actual season of *your* show — by format, title and premiere year, then
+  confirmed against AniList's prequel/sequel relations. Spin-offs, movies and remakes stay out.
 - Files the plugin did not create are never touched.
 
-Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure
-to enable theme music / videos in your display settings.
+Setting a fetch type to *Don't download* removes existing themes of that type again.
 
 ## Playback order
 
-Theme files are numbered so openings sort first (`0-01`, `0-02` … openings, `1-…` insert songs,
-`2-…` endings), which is the order you get in theme **lists** and in clients that keep list order.
-Jellyfin's *alphanumeric sorting* setting makes the numbers compare numerically (`0-02` before
-`0-10`).
+Theme files are numbered so openings sort first:
 
-The Jellyfin **web client, however, shuffles background themes on purpose** — it requests theme
-media with `sortBy=Random` (src/components/themeMediaPlayer.js), and the server then shuffles the
-playlist. With more endings than openings in a library, that makes endings more likely to play
-first. A server plugin cannot change the client's request; if you want ordered OP-first playback
-in the web client, rewrite the request in your browser:
-
-```js
-// ==UserScript==
-// @name        Jellyfin ordered theme playback
-// @match       https://your-jellyfin-host/*
-// ==/UserScript==
-// The theme player asks for sortBy=Random; drop it so the server's
-// name order (0-01, 0-02 … then 2-…) is used instead.
-const nativeFetch = window.fetch;
-window.fetch = (input, init) => {
-    if (typeof input === 'string' && input.includes('/ThemeMedia')) {
-        input = input.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'));
-    }
-    return nativeFetch(input, init);
-};
-
-const nativeOpen = XMLHttpRequest.prototype.open;
-XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-    return nativeOpen.call(this, method, typeof url === 'string' && url.includes('/ThemeMedia')
-        ? url.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'))
-        : url, ...rest);
-};
+```
+0-01_…  0-02_…   ← openings
+1-01_…           ← insert songs
+2-01_…  2-02_…   ← endings
 ```
 
-(Only `/Items/{id}/ThemeMedia` requests are touched — library listings keep their own sorting.)
+That is the order you get in theme **lists** and in clients that keep list order. Jellyfin's
+*alphanumeric sorting* setting makes the numbers compare numerically (`0-02` before `0-10`).
 
-If you prefer no browser magic: enabling **Ignore ED themes** for *videos only* keeps the random
-pool to openings, since the web client prefers background theme videos when they exist.
-## How to install
+> **Note:** the Jellyfin **web client shuffles background themes on purpose** — it requests theme
+> media with `sortBy=Random`, and with more endings than openings in a library, endings win the
+> shuffle more often. A server plugin cannot change that request.
 
-### Plugin Manager
+If you want ordered OP-first playback in the web client, either:
 
-1. Add the following repository to your plugin repositories:
-   https://raw.githubusercontent.com/MrGameVlogger/jellyfin-plugin-animethemes/main/manifest.json
-2. Find the plugin in the catalog and install it.
+- **Strip the shuffle in your browser** with this userscript (touches only theme requests):
 
-### Manually
+  <details>
+  <summary>Userscript</summary>
 
-1. [Grab the latest build.](https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/actions/workflows/build.yaml)
-2. Download it into your plugins folder [as described here](https://jellyfin.org/docs/general/server/plugins/).
+  ```js
+  // ==UserScript==
+  // @name        Jellyfin ordered theme playback
+  // @match       https://your-jellyfin-host/*
+  // ==/UserScript==
+  // The theme player asks for sortBy=Random; drop it so the server's
+  // name order (0-01, 0-02 … then 2-…) is used instead.
+  const nativeFetch = window.fetch;
+  window.fetch = (input, init) => {
+      if (typeof input === 'string' && input.includes('/ThemeMedia')) {
+          input = input.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'));
+      }
+      return nativeFetch(input, init);
+  };
+
+  const nativeOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+      return nativeOpen.call(this, method, typeof url === 'string' && url.includes('/ThemeMedia')
+          ? url.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'))
+          : url, ...rest);
+  };
+  ```
+
+  </details>
+
+- **Or keep it server-side simple**: enable *Ignore ED themes* for **videos** only — the web client
+  prefers background theme videos when they exist, so the random pool becomes openings only.
 
 ## Configuration
 
-Audio and video settings are configured separately, and again separately for series and movies.
+Audio and video are configured separately — and again separately for series and for movies.
 
-| Configuration                           | Description                                                                                               |
-|-----------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| Degree of parallelism                   | How many items should be downloaded in parallel. Default is set to 1 to go easy on the servers. Higher values can hit the AnimeThemes CDN's rate limit; failed downloads are retried automatically and picked up on the next run. |
-| Included libraries (regex)              | Only libraries matching this regex are searched for anime themes. Case-insensitive.                       |
-| Excluded libraries (regex)              | Matching libraries are ignored even if they match the include regex. Leave empty to ignore.               |
-| Ignore themes that overlap with episode | Some shows transition into their themes. Use this setting to filter those themes out.                     |
-| Ignore themes with credits              | Whether to skip themes with credits in them. Useful for video downloads.                                  |
-| Ignore OP themes                        | Use this to control whether OPs are considered.                                                           |
-| Ignore ED themes                        | Use this to control whether EDs are considered.                                                           |
-| Fetch type                              | Determines if you want all distinct themes, only the best match, or none at all.                          |
-| Normalize loudness                      | Keeps themes at a consistent loudness relative to dialogue (ffmpeg loudnorm) instead of a fixed volume.   |
-| Volume                                  | The desired volume, which will be baked in. For videos, 0 will result in the audio channel being removed. Ignored when loudness normalization is enabled. |
+| Setting | What it does |
+|---------|--------------|
+| Degree of parallelism | Items processed at once. Default `1` goes easy on the servers; higher values can trip the CDN's rate limit (retries and the next run recover). |
+| Included / Excluded libraries (regex) | Case-insensitive library name filters. |
+| Fetch type | *All* distinct themes, *Single* best match, or *None* (which also removes existing themes of that type). |
+| Ignore themes that overlap with episode | Drops themes that blend into episode footage. |
+| Ignore themes with credits | Drops themes with credits in them — useful for background video. |
+| Ignore OP / Ignore ED themes | Limit which kinds of themes are considered. |
+| Normalize loudness | Keeps themes at a consistent loudness relative to dialogue (ffmpeg `loudnorm`) instead of a fixed volume. |
+| Volume | Fixed volume baked into the files. `0` mutes videos entirely. Ignored when loudness normalization is on. |
 
-## Where the files are stored
+## Where the files live
 
 Theme files live next to the media they belong to — there is no configurable location:
 
-- theme songs: `<series or movie folder>/theme-music/*.mp3`
-- theme videos: `<series or movie folder>/backdrops/*.webm`
+- theme songs — `<series or movie folder>/theme-music/*.mp3`
+- theme videos — `<series or movie folder>/backdrops/*.webm`
 
-The file names encode the theme order, the processing settings and the upstream content size
-(e.g. `0-01_Show-OP1__50__12345678.webm`), which is how the plugin knows what to keep, refresh or
+File names encode the theme order, the processing settings and the upstream content size
+(e.g. `0-01_Show-OP1__50__12345678.webm`) — that is how the plugin knows what to keep, refresh or
 remove. Files placed in these folders by hand are never touched.
 
 ## Troubleshooting
 
-- **Nothing downloads**: the plugin matches themes by the *AniDB* provider id on each series/movie. If
-  the task log says `Skipping N of M item(s) without an AniDB provider id`, install the
-  [AniDB plugin](https://github.com/jellyfin/jellyfin-plugin-anidb) and refresh your metadata so the
-  ids appear (check the item's metadata ids in the dashboard).
-- **"AnimeThemes has no themes for this anime yet"**: the show has an AnimeThemes entry but no
-  published themes yet — they are picked up automatically within one task interval.
-- **Many `Download failed ... 503` errors**: the AnimeThemes CDN rate-limits bursts; downloads are
-  retried automatically and anything missed is fetched on the next run. Keep the degree of
-  parallelism low for large first-time syncs.
+**Nothing downloads** — themes are matched by the *AniDB* provider id on each series/movie. If the
+task log says `Skipping N of M item(s) without an AniDB provider id`, install the
+[AniDB plugin](https://github.com/jellyfin/jellyfin-plugin-anidb) and refresh your metadata so the
+IDs appear (check the item's metadata IDs in the dashboard).
 
-## Releasing
+**"AnimeThemes has no themes for this anime yet"** — the show exists on AnimeThemes but has no
+published themes yet; they are picked up automatically within one task interval.
 
-Versions follow `major.minor.patch.0` (e.g. `7.0.1.0`); the git tag matches the version exactly.
+**Many `Download failed … 503` errors** — the AnimeThemes CDN rate-limits bursts. Downloads are
+retried automatically and anything missed is fetched on the next run; keep the degree of
+parallelism low for big first-time syncs.
 
-1. Bump `Version`, `AssemblyVersion` and `FileVersion` in `Directory.Build.props` and `version` in
-   `build.yaml`, and set `build.yaml`'s `changelog` to the release notes bullets.
-   Keep `targetAbi` at `12.0.0.0` so the plugin stays installable on all Jellyfin 12.x servers.
-2. Create a GitHub release with the version as the tag (e.g. `7.0.2.0`) and paste the changelog
-   bullets as the release notes.
-3. The publish workflow builds the plugin, attaches the zip to the release and updates `manifest.json`
-   (checksum included) automatically.
+**Themes play in the wrong order in the web client** — see [Playback order](#playback-order); the
+web client shuffles background themes by design.
+
+## Development & releasing
+
+Versions follow `major.minor.patch.0` (e.g. `7.0.1.0`), and the git tag matches the version exactly.
+
+1. Bump `Version`, `AssemblyVersion` and `FileVersion` in `Directory.Build.props`, `version` in
+   `build.yaml`, and set `build.yaml`'s `changelog` to the release notes. Keep `targetAbi` at
+   `12.0.0.0` so the plugin stays installable on every Jellyfin 12.x server.
+2. Create a GitHub release tagged with the version (e.g. `7.0.2.0`) and paste the changelog as the
+   release notes.
+3. The publish workflow builds the plugin, attaches the zip to the release, and updates
+   `manifest.json` (checksum included) automatically — never edit `manifest.json` by hand.
+
+More detail for agents and contributors: [AGENTS.md](AGENTS.md) · session history: [HANDOFF.md](HANDOFF.md)
 
 ## Other notes
 
-If you want the videos to cover the whole screen, try the following CSS:
+Want theme videos to cover the whole screen? Try this custom CSS:
 
 ```css
 body:not(.hide-scroll) > .videoPlayerContainer > video {
