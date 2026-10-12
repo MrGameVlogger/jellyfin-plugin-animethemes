@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.3.3.0",
+                "changelog": "- fix: theme file numbers are now unique per type (0-01, 0-02 \u2026 openings, then insert songs, then endings) \u2014 multi-season pools used to show duplicate numbers and a meaningless 0-00 for themes without a sequence\n- fix: renaming to the new numbering uses the file's identity (name, marker, size), so renumbering never re-downloads or steals another theme's file\n- docs: the Jellyfin web client shuffles background themes on purpose (sortBy=Random); ordering applies to theme lists and clients that keep list order",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.3.3.0/animethemes_7.3.3.0.zip",
+                "checksum": "0ab8afb7e66b4a0525e3db58964e1970",
+                "timestamp": "2026-10-12T02:33:29Z"
+            },
+            {
                 "version": "7.3.2.0",
                 "changelog": "- fix: only seasons of the same show are collected \u2014 spin-offs, movies and remakes no longer leak into a series' theme pool. Series groups on AnimeThemes are franchise-wide, so candidates are filtered by format/title/year and then verified against AniList relations (seasons are prequel/sequel-linked; spin-offs and remakes are not)",
                 "targetAbi": "12.0.0.0",
