@@ -28,8 +28,13 @@ sync with AnimeThemes:
   so siblings are filtered to the same show (format/title/year) and then verified against AniList
   relations — seasons are prequel/sequel-linked to the show, while spin-offs, movies and remakes
   are not.
-- **Openings play first**: file names are prefixed with the theme order (e.g. `0-01_` for the first
-  OP, `2-03_` for the third ED), so Jellyfin's alphabetical theme playback runs OPs before EDs.
+- **Openings sort first**: file names are numbered per type — `0-01`, `0-02` … for openings, then
+  `1-…` insert songs, then `2-…` endings — ordered by season and sequence, so name-sorted listings
+  (and clients that play themes in list order) run openings before endings.
+  *Note:* the Jellyfin web client **shuffles background themes on purpose** (it requests
+  `sortBy=Random`), so on-the-page background playback is randomized by design — the ordering
+  applies to theme lists and to clients that don't request random. Jellyfin's *alphanumeric
+  sorting* setting makes the numbers compare numerically (`0-02` before `0-10`).
 - Files the plugin did not create are never touched.
 
 Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure

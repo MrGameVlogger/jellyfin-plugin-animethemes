@@ -43,11 +43,11 @@ public class AnimeThemesDownloader : IDisposable
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
-    /// Matches theme file names that already carry the type/sequence ordering prefix and captures
-    /// the name they had before ordering was introduced.
+    /// Matches a theme file name and captures the part that identifies the theme regardless of its
+    /// ordering prefix: the source name, the processing marker and the upstream size.
     /// </summary>
-    private static readonly Regex OrderedThemeFilePattern = new(
-        @"^\d+-\d+_(?<legacy>.+)$",
+    private static readonly Regex ThemeIdentityPattern = new(
+        @"^(?:\d+-\d+_)?(?<identity>.+)$",
         RegexOptions.Compiled);
 
     /// <summary>
@@ -258,12 +258,14 @@ public class AnimeThemesDownloader : IDisposable
             }
         }
 
+        var wantedNames = links.Select(it => Path.GetFileName(it.Filepath)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         bool changesMade = false;
         foreach (var (url, relativePath) in links)
         {
-            // A file from before theme ordering was introduced is renamed into place instead
-            // of being downloaded again.
-            changesMade |= MigrateLegacyName(item, relativePath);
+            // A file from an earlier run with another numbering is renamed into place instead of
+            // being downloaded again.
+            changesMade |= MigrateLegacyName(item, relativePath, wantedNames);
 
             // Download if needed
             changesMade |= await Download(type, url, item, relativePath, settings, cancellationToken).ConfigureAwait(false);
@@ -276,7 +278,7 @@ public class AnimeThemesDownloader : IDisposable
             changesMade |= RemoveFile(item, ThemeMusicFileName);
         }
 
-        changesMade |= CleanDirectory(item, type, links.Select(it => Path.GetFileName(it.Filepath)));
+        changesMade |= CleanDirectory(item, type, wantedNames);
 
         return changesMade;
     }
@@ -300,10 +302,21 @@ public class AnimeThemesDownloader : IDisposable
     {
         bool isAudio = type == MediaType.Audio;
 
-        foreach (var theme in themes)
+        // Number themes per type so openings run 0-01, 0-02 … before insert songs 1- … and
+        // endings 2- …. Within a type they are ordered by season (year), then sequence, then file
+        // name. The numbers are unique within the pool, so multi-season series never show doubles
+        // or a meaningless 0-00.
+        var counters = new Dictionary<int, int>();
+        var ordered = themes
+            .OrderBy(it => ThemeRank(it.Theme.Type))
+            .ThenBy(it => it.Year ?? int.MaxValue)
+            .ThenBy(it => it.Theme.Sequence ?? int.MaxValue)
+            .ThenBy(it => it.Video.Filename, StringComparer.Ordinal);
+
+        foreach (var theme in ordered)
         {
             var marker = settings.NormalizeLoudness ? "n" : string.Create(CultureInfo.InvariantCulture, $"{settings.Volume * 100:0}");
-            var order = ThemeOrder(theme.Theme.Type, theme.Theme.Sequence);
+            var rank = ThemeRank(theme.Theme.Type);
 
             if (isAudio)
             {
@@ -315,7 +328,7 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{order}_{name}__{marker}__{audio.Size ?? 0}.mp3"));
+                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{NextOrder(counters, rank)}_{name}__{marker}__{audio.Size ?? 0}.mp3"));
             }
             else
             {
@@ -326,30 +339,37 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{order}_{name}__{marker}__{theme.Video.Size ?? 0}.webm"));
+                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{NextOrder(counters, rank)}_{name}__{marker}__{theme.Video.Size ?? 0}.webm"));
             }
         }
     }
 
     /// <summary>
-    /// Builds the sort prefix that makes openings play before insert songs and endings: the theme
-    /// type rank followed by the sequence number. Jellyfin orders theme media by file name.
+    /// Builds the next order prefix of a theme type: 0-01, 0-02 … Jellyfin orders theme media by
+    /// file name.
+    /// </summary>
+    /// <param name="counters">Number of themes named per type so far.</param>
+    /// <param name="rank">The theme type rank.</param>
+    /// <returns>A prefix like <c>0-01</c>.</returns>
+    private static string NextOrder(Dictionary<int, int> counters, int rank)
+    {
+        counters.TryGetValue(rank, out var seen);
+        counters[rank] = seen + 1;
+        return string.Create(CultureInfo.InvariantCulture, $"{rank}-{seen + 1:00}");
+    }
+
+    /// <summary>
+    /// Rank of a theme type in playback order: openings, then insert songs, then endings.
     /// </summary>
     /// <param name="type">The theme type.</param>
-    /// <param name="sequence">The theme sequence.</param>
-    /// <returns>A prefix like <c>0-01</c>.</returns>
-    private static string ThemeOrder(ThemeType? type, int? sequence)
+    /// <returns>The rank.</returns>
+    private static int ThemeRank(ThemeType? type) => type switch
     {
-        var rank = type switch
-        {
-            ThemeType.OP => 0,
-            ThemeType.IN => 1,
-            ThemeType.ED => 2,
-            _ => 1,
-        };
-
-        return string.Create(CultureInfo.InvariantCulture, $"{rank}-{sequence ?? 0:00}");
-    }
+        ThemeType.OP => 0,
+        ThemeType.IN => 1,
+        ThemeType.ED => 2,
+        _ => 1,
+    };
 
     /// <summary>
     /// Combines a root path with a relative path. The relative part must not be rooted,
@@ -420,13 +440,15 @@ public class AnimeThemesDownloader : IDisposable
     }
 
     /// <summary>
-    /// Renames a theme file created before theme ordering was introduced (one without the
-    /// type/sequence prefix) into place, so upgrading never re-downloads unchanged files.
+    /// Renames a theme file that carries another version of this theme's ordering prefix (or none)
+    /// into place, so renumbering and upgrading never re-download unchanged files. Themes are
+    /// identified by everything but the prefix, so only the same theme's file is ever renamed.
     /// </summary>
     /// <param name="item">The item the theme belongs to.</param>
     /// <param name="relativePath">The wanted file path, relative to the item folder.</param>
+    /// <param name="wantedNames">The file names wanted by this run; never renamed away.</param>
     /// <returns>Whether an existing file was renamed into place.</returns>
-    private bool MigrateLegacyName(BaseItem item, string relativePath)
+    private bool MigrateLegacyName(BaseItem item, string relativePath, IReadOnlySet<string> wantedNames)
     {
         var path = CombineRelative(item.ContainingFolderPath, relativePath);
         if (File.Exists(path))
@@ -434,39 +456,38 @@ public class AnimeThemesDownloader : IDisposable
             return false;
         }
 
-        var match = OrderedThemeFilePattern.Match(Path.GetFileName(path));
-        if (!match.Success)
+        var name = Path.GetFileName(path);
+        var identity = ThemeIdentityPattern.Match(name).Groups["identity"].Value;
+
+        foreach (var candidate in Directory.EnumerateFiles(Path.GetDirectoryName(path)!))
         {
-            return false;
+            var candidateName = Path.GetFileName(candidate);
+            if (wantedNames.Contains(candidateName))
+            {
+                continue;
+            }
+
+            var candidateIdentity = ThemeIdentityPattern.Match(candidateName).Groups["identity"].Value;
+            if (!string.Equals(candidateIdentity, identity, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            try
+            {
+                File.Move(candidate, path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                _logger.LogWarning(e, "Could not rename {Path}", candidate);
+                return false;
+            }
+
+            _logger.LogInformation("[{Id}] Ordering theme file name: {From} -> {To}", item.Id, candidateName, name);
+            return true;
         }
 
-        var legacyName = match.Groups["legacy"].Value;
-
-        // A name that itself looks ordered belongs to another (already ordered) theme, not to a
-        // pre-ordering version of this one. Renaming it would steal that theme's file.
-        if (OrderedThemeFilePattern.IsMatch(legacyName))
-        {
-            return false;
-        }
-
-        var legacyPath = CombineRelative(Path.GetDirectoryName(path)!, legacyName);
-        if (!File.Exists(legacyPath))
-        {
-            return false;
-        }
-
-        try
-        {
-            File.Move(legacyPath, path);
-        }
-        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        {
-            _logger.LogWarning(e, "Could not rename {Path}", legacyPath);
-            return false;
-        }
-
-        _logger.LogInformation("[{Id}] Ordering theme file name: {From} -> {To}", item.Id, legacyName, Path.GetFileName(path));
-        return true;
+        return false;
     }
 
     /// <summary>
@@ -668,7 +689,7 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>A filtered and sorted and flattened enumerable of themes.</returns>
     private IEnumerable<FlattenedTheme> GetBestThemes(IReadOnlyList<Anime> animes, MediaTypeConfiguration settings)
     {
-        return animes.SelectMany(anime => anime.Themes.SelectMany(theme => theme.Entries.SelectMany(entry => (entry.Videos?.Nodes ?? new Collection<Video>()).Select(video => Wrap(theme, entry, video)))))
+        return animes.SelectMany(anime => anime.Themes.SelectMany(theme => theme.Entries.SelectMany(entry => (entry.Videos?.Nodes ?? new Collection<Video>()).Select(video => Wrap(anime, theme, entry, video)))))
             .Where(it =>
             {
                 if (it.Audio is not null)
@@ -686,9 +707,9 @@ public class AnimeThemesDownloader : IDisposable
             .Where(it => !settings.IgnoreOPs || it.Theme.Type != ThemeType.OP);
     }
 
-    private FlattenedTheme Wrap(AnimeTheme theme, AnimeThemeEntry entry, Video video)
+    private FlattenedTheme Wrap(Anime anime, AnimeTheme theme, AnimeThemeEntry entry, Video video)
     {
-        return new FlattenedTheme(theme, entry, video, video.Audio);
+        return new FlattenedTheme(theme, entry, video, video.Audio, anime.Year);
     }
 
     private double Rate(FlattenedTheme theme)

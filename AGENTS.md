@@ -82,8 +82,10 @@ Other pieces:
 
 `{order}_{name}__{marker}__{size}.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
 
-- `order` = theme-type rank + sequence (`0-01_` = first OP … `2-03_` = third ED) so Jellyfin's
-  name-sorted theme playback runs openings first
+- `order` = theme-type rank + a **per-type 1-based counter** (`0-01`, `0-02` … = openings, `1-` =
+  insert songs, `2-` = endings), numbered in (year, sequence, name) order. Numbers are unique
+  within the pool — never reuse the per-anime `sequence` (multi-season pools produced duplicate
+  `0-01`s and `0-00` for null sequences)
 - `marker` = `n` (loudnorm mode) or volume×100
 - `size` = upstream byte size → a changed file is a *new* file (auto-refresh)
 
@@ -93,6 +95,10 @@ are never touched. **Any naming change must update the regex, `MigrateLegacyName
 migration, keyed on the `\d+-\d+_` prefix), and `PluginThemeFilePattern` together**, or upgrades
 will re-download or mis-attribute files. ffmpeg writes to a `*.tmp.*` name and is `File.Move`d
 into place on success only — a partial file must never count as valid.
+
+Note on playback order: jellyfin-web requests theme media with `sortBy=Random`
+(`src/components/themeMediaPlayer.js`) — background playback is shuffled **by design**; the
+ordering only governs theme lists and clients that don't ask for random.
 
 ## Config surface (PluginConfiguration)
 
