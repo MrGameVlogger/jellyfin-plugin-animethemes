@@ -85,7 +85,10 @@ case steal another theme's file (now identity-based + wanted-set guard).
    Remakes (Fruits Basket 2001/2019) share the exact title — only the year separates them.
 4. **jellyfin-web shuffles background themes on purpose**: `themeMediaPlayer.js` requests
    `sortBy: [ItemSortBy.Random]` and the server shuffles (`RandomComparer`). No supported
-   server-side lever exists (shadowing the Random comparer via DI would break Shuffle everywhere).
+   server-side lever exists (shadowing the Random comparer via DI would break Shuffle everywhere),
+   and the core hook that would let plugins patch served web files — PR jellyfin/jellyfin#9095
+   (`IWebFileTransformationWriteService`) — was **closed unmerged**. (The FileTransformation plugin
+   works around it by mutating web files on disk; too invasive for this plugin.)
    "Favors the ending" = pools contain more EDs than OPs. `AGENTS.md`/`README.md` document a
    userscript workaround + the `IgnoreEDs`-on-video trick.
 5. Theme extras from `theme-music/`/`backdrops/` **keep their filename as their Name** (folder-rule
