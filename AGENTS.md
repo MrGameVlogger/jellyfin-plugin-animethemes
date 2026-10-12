@@ -97,8 +97,11 @@ will re-download or mis-attribute files. ffmpeg writes to a `*.tmp.*` name and i
 into place on success only — a partial file must never count as valid.
 
 Note on playback order: jellyfin-web requests theme media with `sortBy=Random`
-(`src/components/themeMediaPlayer.js`) — background playback is shuffled **by design**; the
-ordering only governs theme lists and clients that don't ask for random.
+(`src/components/themeMediaPlayer.js`) — background playback is shuffled **by design** and there is
+no supported server-side lever to change it (shadowing the `ItemSortBy.Random` comparer is
+possible via DI but would break Shuffle everywhere). The numbering only governs theme lists and
+clients that keep list order; README documents a userscript that strips `sortBy=Random` for
+ordered web playback.
 
 ## Config surface (PluginConfiguration)
 

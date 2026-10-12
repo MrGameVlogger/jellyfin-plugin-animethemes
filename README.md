@@ -28,13 +28,46 @@ sync with AnimeThemes:
   so siblings are filtered to the same show (format/title/year) and then verified against AniList
   relations — seasons are prequel/sequel-linked to the show, while spin-offs, movies and remakes
   are not.
-- **Openings sort first**: file names are numbered per type — `0-01`, `0-02` … for openings, then
-  `1-…` insert songs, then `2-…` endings — ordered by season and sequence, so name-sorted listings
-  (and clients that play themes in list order) run openings before endings.
-  *Note:* the Jellyfin web client **shuffles background themes on purpose** (it requests
-  `sortBy=Random`), so on-the-page background playback is randomized by design — the ordering
-  applies to theme lists and to clients that don't request random. Jellyfin's *alphanumeric
-  sorting* setting makes the numbers compare numerically (`0-02` before `0-10`).
+## Playback order
+
+Theme files are numbered so openings sort first (`0-01`, `0-02` … openings, `1-…` insert songs,
+`2-…` endings), which is the order you get in theme **lists** and in clients that keep list order.
+Jellyfin's *alphanumeric sorting* setting makes the numbers compare numerically (`0-02` before
+`0-10`).
+
+The Jellyfin **web client, however, shuffles background themes on purpose** — it requests theme
+media with `sortBy=Random` (src/components/themeMediaPlayer.js), and the server then shuffles the
+playlist. With more endings than openings in a library, that makes endings more likely to play
+first. A server plugin cannot change the client's request; if you want ordered OP-first playback
+in the web client, rewrite the request in your browser:
+
+```js
+// ==UserScript==
+// @name        Jellyfin ordered theme playback
+// @match       https://your-jellyfin-host/*
+// ==/UserScript==
+// The theme player asks for sortBy=Random; drop it so the server's
+// name order (0-01, 0-02 … then 2-…) is used instead.
+const nativeFetch = window.fetch;
+window.fetch = (input, init) => {
+    if (typeof input === 'string' && input.includes('/ThemeMedia')) {
+        input = input.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'));
+    }
+    return nativeFetch(input, init);
+};
+
+const nativeOpen = XMLHttpRequest.prototype.open;
+XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    return nativeOpen.call(this, method, typeof url === 'string' && url.includes('/ThemeMedia')
+        ? url.replace(/[?&]sortBy=[^&]*/, (m) => (m.startsWith('?') ? '?' : '&'))
+        : url, ...rest);
+};
+```
+
+(Only `/Items/{id}/ThemeMedia` requests are touched — library listings keep their own sorting.)
+
+If you prefer no browser magic: enabling **Ignore ED themes** for *videos only* keeps the random
+pool to openings, since the web client prefers background theme videos when they exist.
 - Files the plugin did not create are never touched.
 
 Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure
