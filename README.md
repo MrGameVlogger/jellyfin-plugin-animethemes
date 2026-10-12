@@ -28,6 +28,11 @@ sync with AnimeThemes:
   so siblings are filtered to the same show (format/title/year) and then verified against AniList
   relations — seasons are prequel/sequel-linked to the show, while spin-offs, movies and remakes
   are not.
+- Files the plugin did not create are never touched.
+
+Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure
+to enable theme music / videos in your display settings.
+
 ## Playback order
 
 Theme files are numbered so openings sort first (`0-01`, `0-02` … openings, `1-…` insert songs,
@@ -68,11 +73,6 @@ XMLHttpRequest.prototype.open = function (method, url, ...rest) {
 
 If you prefer no browser magic: enabling **Ignore ED themes** for *videos only* keeps the random
 pool to openings, since the web client prefers background theme videos when they exist.
-- Files the plugin did not create are never touched.
-
-Setting a fetch type to *Don't download* removes existing themes of that type again. Also make sure
-to enable theme music / videos in your display settings.
-
 ## How to install
 
 ### Plugin Manager
