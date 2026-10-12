@@ -6,7 +6,7 @@ this file is the session record: what changed, what was discovered, what is deli
 
 ## Current state
 
-- **`7.3.3.0` released** and verified (release assets + `manifest.json` checksum match, automation green).
+- **`7.3.4.0` released** and verified (release assets + `manifest.json` checksum match, automation green).
 - `main` == remote, all workflows green, **CodeQL: 0 open alerts**, dependencies current (Dependabot).
 - Plugin: Jellyfin **12.x** only (`targetAbi 12.0.0.0`, `net10.0`, Jellyfin.Controller/Model **12.2.0**).
   Jellyfin 10.11 users stay on upstream's v6.
@@ -35,8 +35,9 @@ files in sync with the API forever. Themes are Jellyfin's stock "theme music / t
 | `7.3.1.0` | Hardened ordered-name migration; lookup batching 25 ids/req |
 | `7.3.2.0` | Franchise filtering: spin-offs/movies/remakes excluded (AniList relations) |
 | `7.3.3.0` | Unique theme numbering; documented that the web client shuffles playback |
+| `7.3.4.0` | `-other` extra suffix — Sonarr/Radarr no longer match theme media as episodes/movies |
 
-Versioning: `major.minor.patch.0`, **git tag == version** (`7.3.3.0`). The old re-cut-forever habit
+Versioning: `major.minor.patch.0`, **git tag == version** (`7.3.4.0`). The old re-cut-forever habit
 was replaced by patch releases at the user's request.
 
 ## 3. Bugs found & fixed (the full list)
@@ -67,6 +68,11 @@ CodeQL alerts before/after pushing** — the catch-filter regression bit us twic
 **Found in the naming/sorting work:** per-anime `sequence` in the order prefix produced duplicate
 numbers across seasons and `0-00` for null sequences; the ordered-name migration could in a corner
 case steal another theme's file (now identity-based + wanted-set guard).
+
+**User-reported (Sonarr/Radarr):** theme videos in `backdrops/` entered *arr disk scans and matched
+as episodes/movies. Fixed with the `-other` extra suffix (their `ExcludedExtraFilesRegex` skips
+`-(other|trailer|…)` names); Jellyfin is unaffected because `ExtraRuleResolver` classifies by folder
+first. Existing files are renamed in place via the identity migration.
 
 ## 4. Major discoveries (the "why" behind the design)
 
