@@ -80,7 +80,7 @@ Other pieces:
 
 ## Theme file naming is the state machine
 
-`{order}_{name}__{marker}__{size}.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
+`{order}_{name}__{marker}__{size}-other.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
 
 - `order` = theme-type rank + a **per-type 1-based counter** (`0-01`, `0-02` … = openings, `1-` =
   insert songs, `2-` = endings), numbered in (year, sequence, name) order. Numbers are unique
@@ -88,13 +88,18 @@ Other pieces:
   `0-01`s and `0-00` for null sequences)
 - `marker` = `n` (loudnorm mode) or volume×100
 - `size` = upstream byte size → a changed file is a *new* file (auto-refresh)
+- `-other` = extra-file suffix so Sonarr/Radarr skip theme media in disk scans (their
+  `ExcludedExtraFilesRegex` matches `-(other|trailer|…)` before the extension). Jellyfin classifies
+  theme media by **folder** (`backdrops`/`theme-music` win before suffix rules in
+  `ExtraRuleResolver`), so the suffix is invisible to it
 
 Existence of the wanted name means "current"; `CleanDirectory` deletes only names matching
-`PluginThemeFilePattern` (`^.+__(?:n|\d+)(?:__\d+)?(?:\.tmp)?\.(?:mp3|webm)$`) — hand-made files
-are never touched. **Any naming change must update the regex, `MigrateLegacyName` (rename-based
-migration, keyed on the `\d+-\d+_` prefix), and `PluginThemeFilePattern` together**, or upgrades
-will re-download or mis-attribute files. ffmpeg writes to a `*.tmp.*` name and is `File.Move`d
-into place on success only — a partial file must never count as valid.
+`PluginThemeFilePattern` (`^.+__(?:n|\d+)(?:__\d+)?(?:-other)?(?:\.tmp)?\.(?:mp3|webm)$`) — hand-made
+files are never touched. **Any naming change must update the regex, `MigrateLegacyName`
+(rename-based migration, identity = name+marker+size with the `\d+-\d+_` prefix and the `-other`
+suffix stripped), and `PluginThemeFilePattern` together**, or upgrades will re-download or
+mis-attribute files. ffmpeg writes to a `*.tmp.*` name and is `File.Move`d into place on success
+only — a partial file must never count as valid.
 
 Note on playback order: jellyfin-web requests theme media with `sortBy=Random`
 (`src/components/themeMediaPlayer.js`) — background playback is shuffled **by design** and there is

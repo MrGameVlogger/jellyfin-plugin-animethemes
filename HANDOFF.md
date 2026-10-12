@@ -107,15 +107,18 @@ case steal another theme's file (now identity-based + wanted-set guard).
 
 ## 5. The theme file name is the state machine
 
-`{order}_{name}__{marker}__{size}.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
+`{order}_{name}__{marker}__{size}-other.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
 
 - `order` = per-type 1-based pool counter in (year, sequence, name) order — `0-01`, `0-02` …
   openings, `1-…` insert songs, `2-…` endings (unique; never the raw per-anime sequence)
 - `marker` = `n` (ffmpeg `loudnorm`) or volume×100
 - `size` = upstream byte size → replaced content is a *new* file
+- `-other` = extra-file suffix for Sonarr/Radarr (they skip `-(other|trailer|…)` files in disk
+  scans); Jellyfin classifies by folder, so theme detection is unaffected
 
 Existence = "current"; `CleanDirectory` deletes only `PluginThemeFilePattern` matches (hand-made
-files survive); `MigrateLegacyName` renames old prefixes by **identity** (name+marker+size).
+files survive); `MigrateLegacyName` renames old prefixes by **identity** (name+marker+size, with
+the `\d+-\d+_` prefix and the `-other` suffix stripped).
 **Any naming change must update the regex, `MigrateLegacyName` and `PluginThemeFilePattern`
 together.** ffmpeg output goes to `*.tmp.*` and is renamed on success only.
 

@@ -104,8 +104,10 @@ Theme files live next to the media they belong to — there is no configurable l
 - theme videos — `<series or movie folder>/backdrops/*.webm`
 
 File names encode the theme order, the processing settings and the upstream content size
-(e.g. `0-01_Show-OP1__50__12345678.webm`) — that is how the plugin knows what to keep, refresh or
-remove. Files placed in these folders by hand are never touched.
+(e.g. `0-01_Show-OP1__50__12345678-other.webm`) — that is how the plugin knows what to keep, refresh
+or remove. The `-other` suffix marks the files as extras for tools like Sonarr and Radarr, so they
+never mistake theme media for episodes or movies. Files placed in these folders by hand are never
+touched.
 
 ## Troubleshooting
 

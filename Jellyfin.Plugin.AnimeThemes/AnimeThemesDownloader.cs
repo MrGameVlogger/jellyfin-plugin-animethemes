@@ -35,20 +35,22 @@ public class AnimeThemesDownloader : IDisposable
 
     /// <summary>
     /// Matches the theme file names created by this plugin: theme name, volume marker, optional
-    /// upstream size marker and an optional temporary suffix. Only files matching this pattern are
-    /// ever deleted, so files placed in these folders by hand are left alone.
+    /// upstream size marker, the <c>-other</c> extra suffix and an optional temporary suffix. Only
+    /// files matching this pattern are ever deleted, so files placed in these folders by hand are
+    /// left alone.
     /// </summary>
     private static readonly Regex PluginThemeFilePattern = new(
-        @"^.+__(?:n|\d+)(?:__\d+)?(?:\.tmp)?\.(?:mp3|webm)$",
+        @"^.+__(?:n|\d+)(?:__\d+)?(?:-other)?(?:\.tmp)?\.(?:mp3|webm)$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
     /// Matches a theme file name and captures the part that identifies the theme regardless of its
-    /// ordering prefix: the source name, the processing marker and the upstream size.
+    /// ordering prefix or extra suffix: the source name, the processing marker and the upstream
+    /// size.
     /// </summary>
     private static readonly Regex ThemeIdentityPattern = new(
-        @"^(?:\d+-\d+_)?(?<identity>.+)$",
-        RegexOptions.Compiled);
+        @"^(?:\d+-\d+_)?(?<identity>.+?)(?:-other)?\.(?:mp3|webm)$",
+        RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
     /// <summary>
     /// Paces media downloads so bursts of parallel work do not trip the CDN's rate limiting.
@@ -328,7 +330,10 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{NextOrder(counters, rank)}_{name}__{marker}__{audio.Size ?? 0}.mp3"));
+                // The -other suffix keeps Sonarr/Radarr from treating theme media as episodes or
+                // movies: their disk scans skip files named like extras. Jellyfin classifies theme
+                // media by folder, so the suffix does not affect it.
+                yield return (audio.Link, CombineRelative(ThemeMusicDirectory, $"{NextOrder(counters, rank)}_{name}__{marker}__{audio.Size ?? 0}-other.mp3"));
             }
             else
             {
@@ -339,7 +344,7 @@ public class AnimeThemesDownloader : IDisposable
                     continue;
                 }
 
-                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{NextOrder(counters, rank)}_{name}__{marker}__{theme.Video.Size ?? 0}.webm"));
+                yield return (theme.Video.Link, CombineRelative(ThemeVideoDirectory, $"{NextOrder(counters, rank)}_{name}__{marker}__{theme.Video.Size ?? 0}-other.webm"));
             }
         }
     }
@@ -458,6 +463,10 @@ public class AnimeThemesDownloader : IDisposable
 
         var name = Path.GetFileName(path);
         var identity = ThemeIdentityPattern.Match(name).Groups["identity"].Value;
+        if (identity.Length == 0)
+        {
+            return false;
+        }
 
         foreach (var candidate in Directory.EnumerateFiles(Path.GetDirectoryName(path)!))
         {
