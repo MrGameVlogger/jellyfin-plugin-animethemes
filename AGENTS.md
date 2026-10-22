@@ -147,7 +147,7 @@ clients that keep list order; `jellyfin-ordered-theme-playback.user.js` in the r
 
 ## CI & GitHub
 
-7 workflows (`build`, `test`, `scan-codeql` C#, `scan-codeql-actions` (Actions + JS),
+8 workflows (`build`, `test`, `check-jprm`, `scan-codeql` C#, `scan-codeql-actions` (Actions + JS),
 `dependency-review`, `sync-labels`, `publish`) plus Dependabot (`.github/dependabot.yml`: weekly nuget +
 github-actions, `dependencies`/`nuget`/`github-actions` labels). Renovate was removed to avoid
 duplicate PRs. Workflows are fork-aware (`${{ github.repository }}` gates) and call reusable
@@ -159,6 +159,9 @@ release → `jprm repo add ./manifest.json <zip> --plugin-url …` updates `mani
 machine-maintained: never hand-edit entries. That PR needs the repo setting *Actions →
 Allow GitHub Actions to create and approve pull requests*
 (`can_approve_pull_request_reviews`); without it the job fails right after pushing its branch.
+The `jprm==<version>` pip pin lives inline where Dependabot cannot see it; `check-jprm`
+(weekly + on changes to `publish.yaml`) validates it against PyPI and opens a bump PR when
+it falls behind.
 
 ## Releasing (see README "Development & releasing" for the full flow)
 

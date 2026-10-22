@@ -1,0 +1,97 @@
+name: '🔍 Check jprm pin'
+
+on:
+  schedule:
+    - cron: '30 2 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/publish.yaml'
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/publish.yaml'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    name: jprm pin vs PyPI
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'MrGameVlogger/jellyfin-plugin-animethemes' }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Dependabot cannot see pip pins that live inline in workflow run steps, so this
+      # workflow is the safety net for publish.yaml's `jprm==<version>` pin: it fails on
+      # a pin that does not exist on PyPI (which would break the release) and opens a
+      # bump PR when the pin falls behind, like Dependabot would.
+      - name: Check the jprm pin
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          pin="$(grep -oE 'jprm==[^ ]+' .github/workflows/publish.yaml | head -1 | sed 's/^jprm==//')"
+          if [ -z "$pin" ]; then
+            echo "::error::could not find a jprm==<version> pin in .github/workflows/publish.yaml"
+            exit 1
+          fi
+          echo "pinned: ${pin}"
+
+          exists_code="$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/jprm/${pin}/json")"
+          if [ "$exists_code" != "200" ]; then
+            echo "::error::jprm==${pin} does not exist on PyPI -- the release workflow would fail"
+            exit 1
+          fi
+
+          latest="$(curl -fsSL https://pypi.org/pypi/jprm/json | jq -r .info.version)"
+          echo "latest: ${latest}"
+
+          if [ "$pin" = "$latest" ]; then
+            echo "jprm pin ${pin} is current"
+            exit 0
+          fi
+
+          if [ "${{ github.event_name }}" != "schedule" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "::notice::jprm pin ${pin} is behind PyPI (${latest}); the weekly check opens a bump PR"
+            exit 0
+          fi
+
+          older="$(printf '%s\n%s\n' "$pin" "$latest" | sort -V | head -1)"
+          if [ "$older" = "$latest" ]; then
+            echo "jprm pin ${pin} is ahead of PyPI latest (${latest}) -- leaving it alone"
+            exit 0
+          fi
+
+          branch="chore/jprm-${latest}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          sed -i "s/jprm==${pin//./\\.}/jprm==${latest}/" .github/workflows/publish.yaml
+          git add .github/workflows/publish.yaml
+          git commit -m "chore(deps): bump jprm to ${latest}"
+          git push --force -u origin "$branch"
+          open="$(gh pr list --head "$branch" --state open --json number --jq 'length')"
+          if [ "$open" != "0" ]; then
+            echo "PR for ${branch} already open"
+            exit 0
+          fi
+          gh pr create --base "${{ github.event.repository.default_branch }}" --head "$branch" \
+            --title "chore(deps): bump jprm to ${latest}" \
+            --body "$(printf '%s\n' \
+              '## Summary' \
+              '' \
+              "The \`jprm\` pip pin in \`publish.yaml\` is \`${pin}\`; PyPI has \`${latest}\`. Dependabot cannot see inline workflow pins, so the weekly \`Check jprm pin\` workflow opened this PR." \
+              '' \
+              '## Testing' \
+              '' \
+              '- [ ] Tested against Jellyfin 12.x — n/a (version pin only)' \
+              '- [ ] Ran the "Search For Anime Themes" scheduled task — n/a (version pin only)' \
+              '' \
+              '## Notes' \
+              '' \
+              "- \`${latest}\` was verified to exist on PyPI by the run that opened this PR.")" \
+            --label dependencies
