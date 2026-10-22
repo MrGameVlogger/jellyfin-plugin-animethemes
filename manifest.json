@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.3.6.0",
+                "changelog": "- fix: a failing series, an unreadable folder or a library hiccup no longer aborts the theme search for every other item\n- fix: existing themes are never deleted over a failed download or unusable API payloads (cleanup runs again on the next successful run)\n- fix: a leftover temp file from a crashed run no longer fails its theme forever (ffmpeg overwrites non-interactively now)\n- fix: download errors name the file that failed",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.3.6.0/animethemes_7.3.6.0.zip",
+                "checksum": "bcf3c0955ae049d7f6db2a14d5dcea5a",
+                "timestamp": "2026-10-22T03:48:28Z"
+            },
+            {
                 "version": "7.3.5.0",
                 "changelog": "- fix: the first run for a newly added series no longer aborts the theme search when `theme-music`/`backdrops` don't exist yet\n- fix: a single failing series or movie is logged and skipped instead of stopping the run for all remaining items",
                 "targetAbi": "12.0.0.0",
