@@ -87,16 +87,28 @@ public abstract class BaseThemeSearchTask
         // Process in parallel
         await Parallel.ForEachAsync(itemsWithAnime, new ParallelOptions { CancellationToken = cancellationToken, MaxDegreeOfParallelism = Math.Max(1, configuration.DegreeOfParallelism) }, async (item, ct) =>
         {
-            await _downloader.HandleAsync(item.Item, item.Anime, configuration, ct).ConfigureAwait(false);
-            await semaphore.WaitAsync(ct).ConfigureAwait(false);
             try
             {
-                counter++;
-                progress.Report(counter / (double)count * 100);
+                await _downloader.HandleAsync(item.Item, item.Anime, configuration, ct).ConfigureAwait(false);
+            }
+            catch (Exception e) when (e is not OperationCanceledException || !ct.IsCancellationRequested)
+            {
+                // Timeouts surface as TaskCanceledException too, but only real user cancellation
+                // propagates; a single bad item must not abort the whole run.
+                _logger.LogError(e, "[{Id}] Failed to process item", item.Item.Id);
             }
             finally
             {
-                semaphore.Release();
+                await semaphore.WaitAsync(CancellationToken.None).ConfigureAwait(false);
+                try
+                {
+                    counter++;
+                    progress.Report(counter / (double)count * 100);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
             }
         }).ConfigureAwait(false);
 

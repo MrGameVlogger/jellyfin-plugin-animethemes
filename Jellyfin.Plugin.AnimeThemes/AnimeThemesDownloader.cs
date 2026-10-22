@@ -468,7 +468,14 @@ public class AnimeThemesDownloader : IDisposable
             return false;
         }
 
-        foreach (var candidate in Directory.EnumerateFiles(Path.GetDirectoryName(path)!))
+        // First run for this item: the folder does not exist yet, so there is nothing to migrate.
+        var directory = Path.GetDirectoryName(path)!;
+        if (!Directory.Exists(directory))
+        {
+            return false;
+        }
+
+        foreach (var candidate in Directory.EnumerateFiles(directory))
         {
             var candidateName = Path.GetFileName(candidate);
             if (wantedNames.Contains(candidateName))
