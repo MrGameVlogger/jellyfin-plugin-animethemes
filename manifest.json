@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.3.5.0",
+                "changelog": "- fix: the first run for a newly added series no longer aborts the theme search when `theme-music`/`backdrops` don't exist yet\n- fix: a single failing series or movie is logged and skipped instead of stopping the run for all remaining items",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.3.5.0/animethemes_7.3.5.0.zip",
+                "checksum": "691b778a6a5cc02c08dea518a9a625c4",
+                "timestamp": "2026-10-22T02:27:51Z"
+            },
+            {
                 "version": "7.3.4.0",
                 "changelog": "- fix: theme file names end in `-other`, so Sonarr/Radarr treat them as extras and stop matching theme videos as episodes/movies; Jellyfin theme detection is unchanged and existing files are renamed in place (no re-download)",
                 "targetAbi": "12.0.0.0",
