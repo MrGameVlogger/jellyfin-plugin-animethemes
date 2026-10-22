@@ -156,7 +156,9 @@ duplicate PRs. Workflows are fork-aware (`${{ github.repository }}` gates) and c
 `publish.yaml` runs on GitHub release: JPRM builds the zip → assets (+md5/sha256) go to the
 release → `jprm repo add ./manifest.json <zip> --plugin-url …` updates `manifest.json`
 (checksum, newest-first order) and opens a PR with the update. `manifest.json` is
-machine-maintained: never hand-edit entries.
+machine-maintained: never hand-edit entries. That PR needs the repo setting *Actions →
+Allow GitHub Actions to create and approve pull requests*
+(`can_approve_pull_request_reviews`); without it the job fails right after pushing its branch.
 
 ## Releasing (see README "Development & releasing" for the full flow)
 
