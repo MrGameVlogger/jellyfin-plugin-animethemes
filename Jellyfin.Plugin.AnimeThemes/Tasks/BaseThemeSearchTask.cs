@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.AnimeThemes.Configuration;
+using Jellyfin.Plugin.AnimeThemes.Models;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using Microsoft.Extensions.Logging;
@@ -74,11 +75,23 @@ public abstract class BaseThemeSearchTask
                 items.Count);
         }
 
-        var itemsWithAnime = await candidates
-            .Chunk(ChunkSize)
-            .ToAsyncEnumerable()
-            .SelectMany((chunk) => _downloader.ResolveItems(chunk, cancellationToken))
-            .ToListAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        // Get the anime objects in chunks. A resolution failure (e.g. the seasons lookup) skips
+        // its chunk instead of aborting the run for every other item.
+        var itemsWithAnime = new List<ItemWithAnime>();
+        foreach (var chunk in candidates.Chunk(ChunkSize))
+        {
+            try
+            {
+                await foreach (var resolved in _downloader.ResolveItems(chunk, cancellationToken).WithCancellation(cancellationToken).ConfigureAwait(false))
+                {
+                    itemsWithAnime.Add(resolved);
+                }
+            }
+            catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogError(e, "Could not resolve themes for {Count} item(s); skipping them", chunk.Length);
+            }
+        }
 
         using var semaphore = new SemaphoreSlim(1, 1);
         int counter = 0;

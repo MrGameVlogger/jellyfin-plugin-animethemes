@@ -138,8 +138,9 @@ clients that keep list order; `jellyfin-ordered-theme-playback.user.js` in the r
   ```csharp
   catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
   ```
-- Cleanup runs **after** downloads (a failed download must not delete existing themes) and its
-  deletions count as "changes" so metadata refreshes.
+- Cleanup runs **after** downloads and is skipped entirely when a download failed or when all
+  candidates were dropped by unusable API payloads — a failure must never remove existing themes.
+  Its deletions count as "changes" so metadata refreshes.
 - Disposables get `using` (`cs/local-not-disposed`): ffmpeg `Process`, `SemaphoreSlim`.
 - Workflow `uses:` pins are commit SHAs with version comments (CodeQL `actions/unpinned-tag`);
   every job declares `permissions:` (`actions/missing-workflow-permissions`).
@@ -178,4 +179,6 @@ machine-maintained: never hand-edit entries.
 - `Skipping N of M item(s) without an AniDB provider id` → AniDB plugin missing / metadata not refreshed.
 - `{Type}: AnimeThemes has no themes for this anime yet` → series exists upstream, no OP/EDs published.
 - `{Type}: none of the N available theme video(s) match the configured filters` → relax ignore flags.
+- `keeping existing theme files because a download failed this run` → cleanup skipped; next run retries the download and then cleans up.
+- `keeping existing theme files: all N available theme video(s) were dropped by unusable API payloads` → upstream data problem (e.g. missing `audio`), not the config; themes survive until the API is healthy.
 - `Download failed … 503` → CDN rate limiting; retries + next run recover (keep parallelism low).
