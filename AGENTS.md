@@ -147,8 +147,8 @@ clients that keep list order; `jellyfin-ordered-theme-playback.user.js` in the r
 
 ## CI & GitHub
 
-7 workflows (`build`, `test`, `scan-codeql` C#, `scan-codeql-actions`, `dependency-review`,
-`sync-labels`, `publish`) plus Dependabot (`.github/dependabot.yml`: weekly nuget +
+7 workflows (`build`, `test`, `scan-codeql` C#, `scan-codeql-actions` (Actions + JS),
+`dependency-review`, `sync-labels`, `publish`) plus Dependabot (`.github/dependabot.yml`: weekly nuget +
 github-actions, `dependencies`/`nuget`/`github-actions` labels). Renovate was removed to avoid
 duplicate PRs. Workflows are fork-aware (`${{ github.repository }}` gates) and call reusable
 `jellyfin/jellyfin-meta-plugins` workflows at SHA pins.
