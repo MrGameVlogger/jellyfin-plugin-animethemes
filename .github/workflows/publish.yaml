@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   build:
@@ -87,14 +88,27 @@ jobs:
               --plugin-url "https://github.com/${{ github.repository }}/releases/download/${tag}/${name}"
           done
 
-      - name: Commit manifest.json
+      - name: Open manifest update PR
         run: |-
           if git diff --quiet manifest.json; then
             echo "manifest.json unchanged"
             exit 0
           fi
+          tag="${{ github.event.release.tag_name }}"
+          branch="chore/manifest-${tag}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
           git add manifest.json
-          git commit -m "chore: update manifest for release ${{ github.event.release.tag_name }}"
-          git push
+          git commit -m "chore: update manifest for release ${tag}"
+          git push --force -u origin "$branch"
+          open="$(gh pr list --head "$branch" --state open --json number --jq 'length')"
+          if [ "$open" != "0" ]; then
+            echo "PR for ${branch} already open"
+            exit 0
+          fi
+          gh pr create --base "${{ github.event.repository.default_branch }}" --head "$branch" \
+            --title "chore: update manifest for release ${tag}" \
+            --body "Automated \`manifest.json\` update for release \`${tag}\` (checksum + newest-first entry, built by \`jprm repo add\`). Merge to publish the version to the plugin repository."
+        env:
+          GH_TOKEN: ${{ github.token }}

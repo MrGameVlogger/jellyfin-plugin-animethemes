@@ -154,17 +154,21 @@ duplicate PRs. Workflows are fork-aware (`${{ github.repository }}` gates) and c
 
 `publish.yaml` runs on GitHub release: JPRM builds the zip → assets (+md5/sha256) go to the
 release → `jprm repo add ./manifest.json <zip> --plugin-url …` updates `manifest.json`
-(checksum, newest-first order) and commits it. `manifest.json` is machine-maintained: never
-hand-edit entries.
+(checksum, newest-first order) and opens a PR with the update. `manifest.json` is
+machine-maintained: never hand-edit entries.
 
 ## Releasing (see README "Development & releasing" for the full flow)
 
+- **Everything lands through a pull request** — `main` is ruleset-protected ("Protect main": no
+  force-push or deletion, PR required, admins may bypass). Fixes, releases and automation all
+  follow this; merge your own PRs once CI is green.
 - Version = `major.minor.patch.0`, set in **both** `Directory.Build.props` (3 fields) and
   `build.yaml` (`version:`). Git tag == version exactly (`7.3.1.0`).
 - Keep `targetAbi: "12.0.0.0"` — it is the minimum server version, not the current one.
 - `build.yaml` `changelog:` becomes the manifest entry text at release time.
-- Release = `gh release create <version> --target main --title <version> --notes '...'`; the
-  publish workflow does the rest. Never re-cut a published version — ship a patch bump.
+- Release = merge the version-bump PR, then `gh release create <version> --target main --title
+  <version> --notes '...'`. The publish workflow does the rest and opens a PR with the
+  `manifest.json` update — merge it too. Never re-cut a published version — ship a patch bump.
 - jprm gotchas when dry-running locally: run **from the repo root** (it finds `build.yaml`
   there), `python -m jprm plugin build . --dotnet-framework net10.0 --output <existing dir>`,
   and `repo add` needs `./manifest.json` (a bare `manifest.json` fails its path check).

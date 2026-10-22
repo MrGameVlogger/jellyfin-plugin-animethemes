@@ -129,14 +129,15 @@ web client shuffles background themes by design.
 ## Development & releasing
 
 Versions follow `major.minor.patch.0` (e.g. `7.0.1.0`), and the git tag matches the version exactly.
+Everything lands through a pull request — `main` requires one (admins can bypass).
 
 1. Bump `Version`, `AssemblyVersion` and `FileVersion` in `Directory.Build.props`, `version` in
    `build.yaml`, and set `build.yaml`'s `changelog` to the release notes. Keep `targetAbi` at
-   `12.0.0.0` so the plugin stays installable on every Jellyfin 12.x server.
+   `12.0.0.0` so the plugin stays installable on every Jellyfin 12.x server. Open a PR and merge it.
 2. Create a GitHub release tagged with the version (e.g. `7.0.2.0`) and paste the changelog as the
    release notes.
-3. The publish workflow builds the plugin, attaches the zip to the release, and updates
-   `manifest.json` (checksum included) automatically — never edit `manifest.json` by hand.
+3. The publish workflow builds the plugin, attaches the zip to the release, and opens a PR with the
+   `manifest.json` update (checksum included) — merge it. Never edit `manifest.json` by hand.
 
 More detail for agents and contributors: [AGENTS.md](AGENTS.md) · session history: [HANDOFF.md](HANDOFF.md)
 
