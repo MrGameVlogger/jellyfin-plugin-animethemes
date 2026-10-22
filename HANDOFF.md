@@ -6,7 +6,10 @@ this file is the session record: what changed, what was discovered, what is deli
 
 ## Current state
 
-- **`7.3.4.0` released** and verified (release assets + `manifest.json` checksum match, automation green).
+- **`7.3.6.0` released** and verified (release assets + `manifest.json` checksum match, automation
+  green). `7.3.5.0`/`7.3.6.0` landed after the 2026-10-11/12 session: failure-mode hardening — one
+  bad item, unreadable folder, failed download or unusable API payload can no longer abort a run or
+  delete existing themes.
 - `main` == remote, all workflows green, **CodeQL: 0 open alerts**, dependencies current (Dependabot).
 - Plugin: Jellyfin **12.x** only (`targetAbi 12.0.0.0`, `net10.0`, Jellyfin.Controller/Model **12.2.0**).
   Jellyfin 10.11 users stay on upstream's v6.
@@ -179,7 +182,10 @@ web-UI feature, out of scope).
 1. Read `AGENTS.md` (commands, patterns, release flow) and `README.md` (user behavior).
 2. Repo state check: `git status`, `gh run list`, `gh api …/code-scanning/alerts?state=open`.
 3. Test harness: rebuild `/tmp/gqltest` per §7 if needed; run before/after API-touching changes.
-4. Releasing = bump two files + `build.yaml` changelog → `gh release create <version> --target main`.
-   Watch the `🚀 Publish Plugin` workflow; `manifest.json` updates itself (never hand-edit entries).
+4. Everything lands through pull requests (`main` is ruleset-protected: PR required, no force-push
+   or deletion, admins may bypass). Releasing = version-bump PR (`Directory.Build.props` ×3 +
+   `build.yaml` version & changelog) → merge → `gh release create <version> --target main`. Watch
+   the `🚀 Publish Plugin` workflow; it opens a `manifest.json` PR to merge (never hand-edit
+   entries).
 5. Likely next work: §6 candidates (#18 extras, Shoko port), or user-driven fixes from their library
    logs (they paste run logs — they are gold; every real bug this session came from one).
