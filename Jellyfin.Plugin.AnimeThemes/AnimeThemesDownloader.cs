@@ -102,7 +102,7 @@ public class AnimeThemesDownloader : IDisposable
     {
         // Multi-season series: seasons can carry their own AniDB ids and count as lookup
         // sources for the series, so no season's themes are missed.
-        var seasonIdsByItem = GetSeasonAniDbIds(items);
+        var seasonIdsByItem = GetSeasonAniDbIds(items, cancellationToken);
 
         var lookupIds = new HashSet<int>();
         foreach (var item in items)
@@ -159,8 +159,9 @@ public class AnimeThemesDownloader : IDisposable
     /// Collects the AniDB ids of the seasons of the given series.
     /// </summary>
     /// <param name="items">The items to inspect.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Season AniDB ids, keyed by the id of the parent item.</returns>
-    private Dictionary<Guid, List<int>> GetSeasonAniDbIds(BaseItem[] items)
+    private Dictionary<Guid, List<int>> GetSeasonAniDbIds(BaseItem[] items, CancellationToken cancellationToken)
     {
         var result = new Dictionary<Guid, List<int>>();
         var series = items.Where(it => it.GetBaseItemKind() == BaseItemKind.Series).ToList();
@@ -169,13 +170,23 @@ public class AnimeThemesDownloader : IDisposable
             return result;
         }
 
-        var seasons = _libraryManager.GetItemList(
-            new InternalItemsQuery
-            {
-                IncludeItemTypes = [BaseItemKind.Season],
-                Recursive = true,
-            },
-            series);
+        IReadOnlyList<BaseItem> seasons;
+        try
+        {
+            seasons = _libraryManager.GetItemList(
+                new InternalItemsQuery
+                {
+                    IncludeItemTypes = [BaseItemKind.Season],
+                    Recursive = true,
+                },
+                series);
+        }
+        catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        {
+            // Season ids are only extra lookup sources; a hiccup here must not abort the run.
+            _logger.LogError(e, "Could not list the seasons of {Count} series(s); continuing without them", series.Count);
+            return result;
+        }
 
         foreach (var season in seasons)
         {
@@ -249,20 +260,33 @@ public class AnimeThemesDownloader : IDisposable
 
         if (links.Length == 0)
         {
-            var availableVideos = animes.Sum(anime => anime.Themes.Sum(theme => theme.Entries.Sum(entry => entry.Videos?.Nodes?.Count ?? 0)));
-            if (availableVideos == 0)
+            var videos = animes
+                .SelectMany(anime => anime.Themes ?? new Collection<AnimeTheme>())
+                .SelectMany(theme => theme.Entries ?? new Collection<AnimeThemeEntry>())
+                .SelectMany(entry => entry.Videos?.Nodes ?? new Collection<Video>())
+                .ToList();
+            if (videos.Count == 0)
             {
                 _logger.LogInformation("[{Id}] {Type}: AnimeThemes has no themes for this anime yet", item.Id, type);
             }
+            else if (videos.All(it => it.Audio is null))
+            {
+                // Every candidate was dropped by unusable API payloads (e.g. a missing audio
+                // track). That is a data problem, not the configuration speaking: deleting the
+                // existing themes now would lose them over an API glitch.
+                _logger.LogWarning("[{Id}] {Type}: keeping existing theme files: all {Count} available theme video(s) were dropped by unusable API payloads", item.Id, type, videos.Count);
+                return false;
+            }
             else
             {
-                _logger.LogInformation("[{Id}] {Type}: none of the {Count} available theme video(s) match the configured filters", item.Id, type, availableVideos);
+                _logger.LogInformation("[{Id}] {Type}: none of the {Count} available theme video(s) match the configured filters", item.Id, type, videos.Count);
             }
         }
 
         var wantedNames = links.Select(it => Path.GetFileName(it.Filepath)).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         bool changesMade = false;
+        bool downloadFailed = false;
         foreach (var (url, relativePath) in links)
         {
             // A file from an earlier run with another numbering is renamed into place instead of
@@ -270,10 +294,20 @@ public class AnimeThemesDownloader : IDisposable
             changesMade |= MigrateLegacyName(item, relativePath, wantedNames);
 
             // Download if needed
-            changesMade |= await Download(type, url, item, relativePath, settings, cancellationToken).ConfigureAwait(false);
+            var (changed, failed) = await Download(type, url, item, relativePath, settings, cancellationToken).ConfigureAwait(false);
+            changesMade |= changed;
+            downloadFailed |= failed;
         }
 
-        // Clean up only after the downloads so a failed download never removes existing themes.
+        // Clean up only after the downloads, and only when every wanted file made it to disk: a
+        // failed download must never remove existing themes (like an older version whose
+        // replacement just failed to download).
+        if (downloadFailed)
+        {
+            _logger.LogWarning("[{Id}] {Type}: keeping existing theme files because a download failed this run", item.Id, type);
+            return changesMade;
+        }
+
         if (type == MediaType.Audio)
         {
             // We don't need this file because we're using the directory variant.
@@ -296,7 +330,7 @@ public class AnimeThemesDownloader : IDisposable
             case FetchType.All:
                 return themes;
             default:
-                throw new ArgumentOutOfRangeException($"Unknown fetch type: {fetchType}");
+                throw new ArgumentOutOfRangeException(nameof(fetchType), fetchType, "Unknown fetch type");
         }
     }
 
@@ -394,6 +428,32 @@ public class AnimeThemesDownloader : IDisposable
     }
 
     /// <summary>
+    /// Enumerates the files of a directory without ever throwing: a folder that is missing,
+    /// vanishes mid-run or cannot be read must not abort the whole run. Enumeration is
+    /// materialized eagerly so I/O errors surface inside the guard.
+    /// </summary>
+    /// <param name="item">The item the directory belongs to (for logging).</param>
+    /// <param name="directory">The directory to enumerate.</param>
+    /// <returns>The file paths in the directory, or an empty list when it cannot be read.</returns>
+    private List<string> EnumerateFilesSafe(BaseItem item, string directory)
+    {
+        if (!Directory.Exists(directory))
+        {
+            return [];
+        }
+
+        try
+        {
+            return [.. Directory.EnumerateFiles(directory)];
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            _logger.LogWarning(e, "[{Id}] Could not read directory {Directory}", item.Id, directory);
+            return [];
+        }
+    }
+
+    /// <summary>
     /// Removes theme files created by this plugin that are no longer wanted. Files not matching
     /// the plugin's naming scheme are left alone.
     /// </summary>
@@ -406,15 +466,11 @@ public class AnimeThemesDownloader : IDisposable
         var directory = mediaType == MediaType.Audio ? ThemeMusicDirectory : ThemeVideoDirectory;
 
         var path = CombineRelative(series.ContainingFolderPath, directory);
-        if (!Directory.Exists(path))
-        {
-            return false;
-        }
 
         var allowedNamesSet = allowedNames.ToHashSet(StringComparer.OrdinalIgnoreCase);
         bool removedAny = false;
 
-        foreach (var filepath in Directory.EnumerateFiles(path))
+        foreach (var filepath in EnumerateFilesSafe(series, path))
         {
             var name = Path.GetFileName(filepath);
             if (allowedNamesSet.Contains(name) || !PluginThemeFilePattern.IsMatch(name))
@@ -468,14 +524,8 @@ public class AnimeThemesDownloader : IDisposable
             return false;
         }
 
-        // First run for this item: the folder does not exist yet, so there is nothing to migrate.
         var directory = Path.GetDirectoryName(path)!;
-        if (!Directory.Exists(directory))
-        {
-            return false;
-        }
-
-        foreach (var candidate in Directory.EnumerateFiles(directory))
+        foreach (var candidate in EnumerateFilesSafe(item, directory))
         {
             var candidateName = Path.GetFileName(candidate);
             if (wantedNames.Contains(candidateName))
@@ -530,13 +580,13 @@ public class AnimeThemesDownloader : IDisposable
         }
     }
 
-    private async ValueTask<bool> Download(MediaType type, string url, BaseItem item, string relativePath, MediaTypeConfiguration settings, CancellationToken cancellationToken = default)
+    private async ValueTask<(bool Changed, bool Failed)> Download(MediaType type, string url, BaseItem item, string relativePath, MediaTypeConfiguration settings, CancellationToken cancellationToken = default)
     {
         var path = CombineRelative(item.ContainingFolderPath, relativePath);
         if (File.Exists(path))
         {
             // Nothing to do
-            return false;
+            return (false, false);
         }
 
         string? tempFile = null;
@@ -589,7 +639,10 @@ public class AnimeThemesDownloader : IDisposable
                     FileName = _mediaEncoder.EncoderPath,
                     WindowStyle = ProcessWindowStyle.Hidden,
                     ErrorDialog = false,
-                    ArgumentList = { "-i", tempFile }
+
+                    // -y: a leftover temp file from a crashed run must be overwritten without
+                    // asking; stdin is not redirected, so the prompt would fail or hang.
+                    ArgumentList = { "-y", "-i", tempFile }
                 },
                 EnableRaisingEvents = true
             };
@@ -645,8 +698,8 @@ public class AnimeThemesDownloader : IDisposable
         {
             // Timeouts surface as TaskCanceledException too, but only real user cancellation
             // propagates; everything else is a per-file failure.
-            _logger.LogError(e, "Download failed");
-            return false;
+            _logger.LogError(e, "[{Id}] Download failed for {Path}", item.Id, path);
+            return (false, true);
         }
         finally
         {
@@ -661,7 +714,7 @@ public class AnimeThemesDownloader : IDisposable
             }
         }
 
-        return true;
+        return (true, false);
     }
 
     private bool TryGetAniDbId(BaseItem item, out int id)
@@ -705,7 +758,7 @@ public class AnimeThemesDownloader : IDisposable
     /// <returns>A filtered and sorted and flattened enumerable of themes.</returns>
     private IEnumerable<FlattenedTheme> GetBestThemes(IReadOnlyList<Anime> animes, MediaTypeConfiguration settings)
     {
-        return animes.SelectMany(anime => anime.Themes.SelectMany(theme => theme.Entries.SelectMany(entry => (entry.Videos?.Nodes ?? new Collection<Video>()).Select(video => Wrap(anime, theme, entry, video)))))
+        return animes.SelectMany(anime => (anime.Themes ?? new Collection<AnimeTheme>()).SelectMany(theme => (theme.Entries ?? new Collection<AnimeThemeEntry>()).SelectMany(entry => (entry.Videos?.Nodes ?? new Collection<Video>()).Select(video => Wrap(anime, theme, entry, video)))))
             .Where(it =>
             {
                 if (it.Audio is not null)
