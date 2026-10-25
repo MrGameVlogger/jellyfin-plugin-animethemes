@@ -89,7 +89,7 @@ Audio and video are configured separately — and again separately for series an
 |---------|--------------|
 | Degree of Parallelism | Items processed at once. Default `1` goes easy on the servers; higher values can trip the CDN's rate limit (retries and the next run recover). |
 | Included / Excluded Libraries (Regex) | Case-insensitive library name filters. |
-| Fetch type | *All themes*, *Single theme*, or *Don't download* (which also removes existing themes of that type). |
+| Fetch type | *All themes* (every theme and each of its versions — shows can use several cuts of one OP/ED), *Single theme*, or *Don't download* (which also removes existing themes of that type). |
 | Ignore themes that overlap with episode | Drops themes that blend into episode footage. |
 | Ignore themes that contain credits | Drops themes with credits in them — useful for background video. |
 | Ignore OP themes / Ignore ED themes | Limit which kinds of themes are considered. |

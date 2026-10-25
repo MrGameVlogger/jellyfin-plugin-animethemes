@@ -250,7 +250,10 @@ public class AnimeThemesDownloader : IDisposable
     {
         var settings = type == MediaType.Audio ? configuration.AudioSettings : configuration.VideoSettings;
 
-        var distinctThemes = GetBestThemes(animes, settings).DistinctBy(it => it.Theme.Id);
+        // One file per theme *version*: a theme can carry several entries (v1, v2, …) and each is
+        // a cut the show actually used, not a replacement for the others. Only the multiple
+        // encodes of the same version collapse into the best-rated one.
+        var distinctThemes = GetBestThemes(animes, settings).DistinctBy(it => it.Entry.Id);
 
         // Pick themes according to fetch type
         var requiredThemes = PickThemes(settings.FetchType, distinctThemes);
@@ -339,14 +342,15 @@ public class AnimeThemesDownloader : IDisposable
         bool isAudio = type == MediaType.Audio;
 
         // Number themes per type so openings run 0-01, 0-02 … before insert songs 1- … and
-        // endings 2- …. Within a type they are ordered by season (year), then sequence, then file
-        // name. The numbers are unique within the pool, so multi-season series never show doubles
-        // or a meaningless 0-00.
+        // endings 2- …. Within a type they are ordered by season (year), then sequence, then
+        // version, then file name. The numbers are unique within the pool, so multi-season
+        // series never show doubles or a meaningless 0-00.
         var counters = new Dictionary<int, int>();
         var ordered = themes
             .OrderBy(it => ThemeRank(it.Theme.Type))
             .ThenBy(it => it.Year ?? int.MaxValue)
             .ThenBy(it => it.Theme.Sequence ?? int.MaxValue)
+            .ThenBy(it => it.Entry.Version ?? 1)
             .ThenBy(it => it.Video.Filename, StringComparer.Ordinal);
 
         foreach (var theme in ordered)
@@ -825,6 +829,10 @@ public class AnimeThemesDownloader : IDisposable
         {
             score += 10;
         }
+
+        // Small penalty per later version of a theme: they are additional cuts, not improved
+        // replacements, so the original wins whenever quality is otherwise equal.
+        score += Math.Max(0, (theme.Entry.Version ?? 1) - 1);
 
         return score;
     }
