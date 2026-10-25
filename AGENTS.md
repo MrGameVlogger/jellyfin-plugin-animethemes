@@ -47,8 +47,9 @@ Single project (`Jellyfin.Plugin.AnimeThemes`), no test project. Execution flow:
    - yields per-item theme pools (`ItemWithAnime`) covering all matched anime
 4. `AnimeThemesDownloader.HandleAsync` processes items through `Parallel.ForEachAsync`
    (parallelism config, clamped ≥ 1): theme selection (`GetBestThemes` filters + `Rate()`
-   scoring, `DistinctBy(Theme.Id)`), then per media type the file lifecycle — rename-migration,
-   download (ffmpeg), cleanup — and `RefreshMetadata` when anything changed.
+   scoring, `DistinctBy(Entry.Id)` — one file per theme **version**), then per media type the
+   file lifecycle — rename-migration, download (ffmpeg), cleanup — and `RefreshMetadata` when
+   anything changed.
 
 Other pieces:
 
@@ -70,6 +71,10 @@ Other pieces:
 ## Models & GraphQL shape gotchas
 
 - `Anime.title` is a nested `AnimeTitle`; display name = `title.romaji` (see `Anime.Name`).
+- `AnimeThemeEntry` is a **version** of a theme (`version` 1, 2, 3 … — e.g. Bakemonogatari's ED1
+  has three), not an alternate encode; a `Video` is an encode of a version. Versions are all
+  wanted ("the show has several OPs"), so selection keeps **every entry** and only collapses the
+  encodes of one entry into the best-rated `Video`.
 - Enums use `[JsonConverter(typeof(JsonStringEnumConverter))]` on the enum type itself. The API's
   `VideoOverlap` values are `NONE`/`TRANS`/`OVER` — `OverlapType.Transition` is aliased to `TRANS`
   via `[JsonStringEnumMemberName("TRANS")]`; `ThemeType` gained `IN` (insert songs).
@@ -83,9 +88,9 @@ Other pieces:
 `{order}_{name}__{marker}__{size}-other.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
 
 - `order` = theme-type rank + a **per-type 1-based counter** (`0-01`, `0-02` … = openings, `1-` =
-  insert songs, `2-` = endings), numbered in (year, sequence, name) order. Numbers are unique
-  within the pool — never reuse the per-anime `sequence` (multi-season pools produced duplicate
-  `0-01`s and `0-00` for null sequences)
+  insert songs, `2-` = endings), numbered in (year, sequence, version, name) order. Numbers are
+  unique within the pool — never reuse the per-anime `sequence` (multi-season pools produced
+  duplicate `0-01`s and `0-00` for null sequences)
 - `marker` = `n` (loudnorm mode) or volume×100
 - `size` = upstream byte size → a changed file is a *new* file (auto-refresh)
 - `-other` = extra-file suffix so Sonarr/Radarr skip theme media in disk scans (their
