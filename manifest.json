@@ -8,6 +8,14 @@
         "category": "Metadata",
         "versions": [
             {
+                "version": "7.3.7.0",
+                "changelog": "- fix: every version of an OP/ED is downloaded now \u2014 shows with several cuts of one theme (v1, v2, \u2026) no longer lose the later ones; the best encode of each version is kept\n- fix: theme versions are numbered and listed in order (v1, v2, \u2026 v10)\n- fix: \"Single theme\" fetch type prefers the original version when the quality is otherwise equal",
+                "targetAbi": "12.0.0.0",
+                "sourceUrl": "https://github.com/MrGameVlogger/jellyfin-plugin-animethemes/releases/download/7.3.7.0/animethemes_7.3.7.0.zip",
+                "checksum": "98ac50ebbc6763bb3488dbdf18e200a4",
+                "timestamp": "2026-10-25T00:58:44Z"
+            },
+            {
                 "version": "7.3.6.0",
                 "changelog": "- fix: a failing series, an unreadable folder or a library hiccup no longer aborts the theme search for every other item\n- fix: existing themes are never deleted over a failed download or unusable API payloads (cleanup runs again on the next successful run)\n- fix: a leftover temp file from a crashed run no longer fails its theme forever (ffmpeg overwrites non-interactively now)\n- fix: download errors name the file that failed",
                 "targetAbi": "12.0.0.0",
