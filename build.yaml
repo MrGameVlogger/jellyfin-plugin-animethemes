@@ -1,7 +1,7 @@
 ---
 name: "AnimeThemes"
 guid: "086022b5-29fb-4f89-a298-3d595492a5ed"
-version: 7.3.7.0
+version: 7.3.8.0
 targetAbi: "12.0.0.0"
 framework: "net10.0"
 overview: "Plugin for Jellyfin that fetches anime themes (OPs and EDs) from animethemes.moe"
@@ -15,6 +15,4 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - fix: every version of an OP/ED is downloaded now — shows with several cuts of one theme (v1, v2, …) no longer lose the later ones; the best encode of each version is kept
-  - fix: theme versions are numbered and listed in order (v1, v2, … v10)
-  - fix: "Single theme" fetch type prefers the original version when the quality is otherwise equal
+  - chore: dependency updates only — bundled Polly 8.8.0 → 8.9.0; built against Jellyfin 12.4.0 (API-identical, targetAbi unchanged)
