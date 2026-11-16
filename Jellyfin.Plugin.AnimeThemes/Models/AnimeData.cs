@@ -8,5 +8,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// </summary>
 /// <param name="Anime">List of found anime.</param>
 public record AnimeData(
-    [property: JsonPropertyName("findAnimeByExternalSite")] Collection<Anime> Anime
-);
+    [property: JsonPropertyName("findAnimeByExternalSite")] Collection<Anime> Anime);

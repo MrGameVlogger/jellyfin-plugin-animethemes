@@ -19,8 +19,7 @@ public record Anime(
     [property: JsonPropertyName("animethemes")]
     Collection<AnimeTheme> Themes,
     [property: JsonPropertyName("series")]
-    SeriesConnection? Series
-)
+    SeriesConnection? Series)
 {
     /// <summary>
     /// Gets the display title of this anime.

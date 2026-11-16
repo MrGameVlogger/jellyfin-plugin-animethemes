@@ -7,5 +7,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// </summary>
 /// <param name="Message">The error message.</param>
 public record GraphQLError(
-    [property: JsonPropertyName("message")] string Message
-);
+    [property: JsonPropertyName("message")] string Message);

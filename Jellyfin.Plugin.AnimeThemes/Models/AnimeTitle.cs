@@ -7,5 +7,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// </summary>
 /// <param name="Romaji">The romaji title.</param>
 public record AnimeTitle(
-    [property: JsonPropertyName("romaji")] string? Romaji
-);
+    [property: JsonPropertyName("romaji")] string? Romaji);

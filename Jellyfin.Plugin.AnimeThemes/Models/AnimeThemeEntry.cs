@@ -23,5 +23,4 @@ public record AnimeThemeEntry(
     [property: JsonPropertyName("nsfw")] bool Nsfw,
     [property: JsonPropertyName("spoiler")]
     bool Spoiler,
-    [property: JsonPropertyName("videos")] VideoConnection Videos
-);
+    [property: JsonPropertyName("videos")] VideoConnection Videos);

@@ -20,5 +20,4 @@ public record Audio(
     [property: JsonPropertyName("size")] long? Size,
     [property: JsonPropertyName("mimetype")]
     string MimeType,
-    [property: JsonPropertyName("link")] string Link
-);
+    [property: JsonPropertyName("link")] string Link);
