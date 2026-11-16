@@ -10,5 +10,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// <param name="Errors">The response errors, if any.</param>
 public record AnimeResponse(
     [property: JsonPropertyName("data")] AnimeData? Data,
-    [property: JsonPropertyName("errors")] Collection<GraphQLError>? Errors
-);
+    [property: JsonPropertyName("errors")] Collection<GraphQLError>? Errors);

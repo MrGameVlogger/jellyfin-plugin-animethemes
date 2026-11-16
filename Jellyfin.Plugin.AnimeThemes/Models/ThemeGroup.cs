@@ -9,5 +9,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// <param name="Name">The name of the group.</param>
 public record ThemeGroup(
     [property: JsonPropertyName("id")] int Id,
-    [property: JsonPropertyName("name")] string? Name
-);
+    [property: JsonPropertyName("name")] string? Name);

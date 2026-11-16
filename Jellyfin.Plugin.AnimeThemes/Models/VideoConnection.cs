@@ -8,5 +8,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// </summary>
 /// <param name="Nodes">The related videos.</param>
 public record VideoConnection(
-    [property: JsonPropertyName("nodes")] Collection<Video> Nodes
-);
+    [property: JsonPropertyName("nodes")] Collection<Video> Nodes);

@@ -11,5 +11,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 public record AnimeSeries(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("name")] string? Name,
-    [property: JsonPropertyName("anime")] AnimeConnection Anime
-);
+    [property: JsonPropertyName("anime")] AnimeConnection Anime);

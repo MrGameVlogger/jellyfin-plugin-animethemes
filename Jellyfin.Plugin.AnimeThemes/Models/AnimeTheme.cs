@@ -20,5 +20,4 @@ public record AnimeTheme(
     [property: JsonPropertyName("group")] ThemeGroup? Group,
     [property: JsonPropertyName("slug")] string? Slug,
     [property: JsonPropertyName("animethemeentries")]
-    Collection<AnimeThemeEntry> Entries
-);
+    Collection<AnimeThemeEntry> Entries);

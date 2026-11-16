@@ -14,5 +14,4 @@ public record Resource(
     [property: JsonPropertyName("id")] int Id,
     [property: JsonPropertyName("externalId")]
     int? ExternalId,
-    [property: JsonPropertyName("site")] string Site
-);
+    [property: JsonPropertyName("site")] string Site);

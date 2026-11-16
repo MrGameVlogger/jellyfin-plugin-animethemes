@@ -8,5 +8,4 @@ namespace Jellyfin.Plugin.AnimeThemes.Models;
 /// </summary>
 /// <param name="Nodes">The related resources.</param>
 public record ResourceConnection(
-    [property: JsonPropertyName("nodes")] Collection<Resource> Nodes
-);
+    [property: JsonPropertyName("nodes")] Collection<Resource> Nodes);
