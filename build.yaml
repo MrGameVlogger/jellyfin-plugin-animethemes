@@ -15,4 +15,4 @@ owner: "MrGameVlogger"
 artifacts:
   - "Jellyfin.Plugin.AnimeThemes.dll"
 changelog: |-
-  - chore: dependency updates only — bundled Polly 8.8.0 → 8.9.0; built against Jellyfin 12.4.0 (API-identical, targetAbi unchanged)
+  - chore: dependency updates only. Bundled Polly 8.9.0 (was 8.8.0); built against Jellyfin 12.4.0 (API-identical, targetAbi unchanged)

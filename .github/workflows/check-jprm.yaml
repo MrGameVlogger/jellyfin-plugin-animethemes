@@ -88,8 +88,8 @@ jobs:
               '' \
               '## Testing' \
               '' \
-              '- [ ] Tested against Jellyfin 12.x — n/a (version pin only)' \
-              '- [ ] Ran the "Search For Anime Themes" scheduled task — n/a (version pin only)' \
+              '- [ ] Tested against Jellyfin 12.x: n/a (version pin only)' \
+              '- [ ] Ran the "Search For Anime Themes" scheduled task: n/a (version pin only)' \
               '' \
               '## Notes' \
               '' \
