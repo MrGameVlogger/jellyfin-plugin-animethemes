@@ -1,7 +1,7 @@
 # AGENTS.md
 
-Jellyfin plugin (C#/.NET 10) that downloads anime OP/ED themes from AnimeThemes into
-`theme-music/` / `backdrops/` next to each series/movie. Fork of `EusthEnoptEron/jellyfin-plugin-animethemes`;
+Jellyfin plugin (C#/.NET 10) that downloads anime opening and ending themes from AnimeThemes into
+`theme-music/` / `backdrops/` next to each series or movie. Fork of `EusthEnoptEron/jellyfin-plugin-animethemes`;
 issues/PRs from upstream are a useful source of feature ideas (many already implemented here).
 
 ## Commands
@@ -15,180 +15,181 @@ dotnet format Jellyfin.Plugin.AnimeThemes.sln --verify-no-changes
 - There is **no unit test suite** (`test.yaml` only builds). Verify behavior against the live
   AnimeThemes GraphQL API (`https://graphql.animethemes.moe/`, POST to `/`) with a scratch console
   app that references the plugin project. Useful probes: introspect `__type(name: "...")` for schema
-  details; call `findAnimeByExternalSite` with real AniDB ids (e.g. `69` = One Piece, a worst-case
-  franchise) and assert deserialization, series expansion and `size` binding.
-- **Before pushing**: build + `dotnet format` clean, then let CodeQL run on the push and confirm
-  **0 open code-scanning alerts** (GitHub MCP tools can list them from the session). We have been
-  bitten by `cs/catch-of-all-exceptions` reappearing after refactorings — re-check after any change
-  to catch blocks.
+  details; call `findAnimeByExternalSite` with real AniDB ids (for example `69` = One Piece, a
+  worst-case franchise) and assert deserialization, series expansion and `size` binding.
+- **Before pushing**: build and `dotnet format` clean, then let CodeQL run on the push and confirm
+  **0 open code-scanning alerts** (GitHub MCP tools can list them from the session).
+  `cs/catch-of-all-exceptions` has reappeared after refactorings before, so re-check after any
+  change to catch blocks.
 - Note: build/test/CodeQL workflows `paths-ignore` `**/*.md`, so docs-only pushes are CI-silent.
 
 ## Architecture
 
 Single project (`Jellyfin.Plugin.AnimeThemes`), no test project. Execution flow:
 
-1. `Tasks/ScheduledThemeSearchTask` (`IScheduledTask`, auto-discovered by Jellyfin — no DI
-   registration needed; 12 h interval trigger) → `BaseThemeSearchTask.FindAndProcessAsync`.
+1. `Tasks/ScheduledThemeSearchTask` (`IScheduledTask`, auto-discovered by Jellyfin, so no DI
+   registration is needed; 12 h interval trigger) calls `BaseThemeSearchTask.FindAndProcessAsync`.
 2. Libraries are filtered by include/exclude **regexes** from config against library names
-   (`GetApplicableItems`), then `Series`+`Movie` items are queried (`InternalItemsQuery`,
+   (`GetApplicableItems`), then `Series` and `Movie` items are queried (`InternalItemsQuery`,
    `IsVirtualItem = false`, `Recursive = true`, scoped to the matched libraries).
 3. Items are chunked (50) into `AnimeThemesDownloader.ResolveItems`:
    - collects the item's AniDB provider id (`TryGetProviderId("AniDB", …)`, **case-insensitive**
-     dictionary — any casing works) and any **child seasons'** AniDB ids
-   - `AnimeThemesApi.FindByAniDbId` batches ids (25/request) and expands each match with its
-     AnimeThemes `series → anime` siblings that are **seasons of the same show**. The series
-     grouping is franchise-wide (spin-offs, movies, remakes — remakes share the exact title, only
-     the year separates them), so siblings pass two gates: `IsSameShow` (same format + title match
-     after stripping season markers + premiere year within 10) and `AnimeRelations` (AniList
-     prequel/sequel reachability — seasons chain through these; `SPIN_OFF`/`ALTERNATIVE` do not).
-     AniList ids come from the AnimeThemes resources; relations are cached in
-     `animethemes-relations.json` beside the plugin config and unknown data falls back to the
-     title heuristic
+     dictionary, so any casing works) and any **child seasons'** AniDB ids
+   - `AnimeThemesApi.FindByAniDbId` batches ids (25 per request) and expands each match with the
+     sibling anime in its AnimeThemes `series` group that are **seasons of the same show**. The
+     series grouping is franchise-wide (spin-offs, movies, remakes; remakes share the exact title,
+     and only the year separates them), so siblings pass two gates: `IsSameShow` (same format and
+     title match after stripping season markers and premiere year within 10) and `AnimeRelations`
+     (AniList prequel/sequel reachability; seasons chain through these, while
+     `SPIN_OFF`/`ALTERNATIVE` do not). AniList ids come from the AnimeThemes resources; relations
+     are cached in `animethemes-relations.json` beside the plugin config and unknown data falls
+     back to the title heuristic
    - yields per-item theme pools (`ItemWithAnime`) covering all matched anime
 4. `AnimeThemesDownloader.HandleAsync` processes items through `Parallel.ForEachAsync`
-   (parallelism config, clamped ≥ 1): theme selection (`GetBestThemes` filters + `Rate()`
-   scoring, `DistinctBy(Entry.Id)` — one file per theme **version**), then per media type the
-   file lifecycle — rename-migration, download (ffmpeg), cleanup — and `RefreshMetadata` when
+   (parallelism config, clamped ≥ 1): theme selection (`GetBestThemes` filters and `Rate()`
+   scoring, `DistinctBy(Entry.Id)`, one file per theme **version**), then per media type the
+   file lifecycle (rename-migration, download with ffmpeg, cleanup), then `RefreshMetadata` when
    anything changed.
 
 Other pieces:
 
-- `AnimeThemesApi.cs` — GraphQL client. `findAnimeByExternalSite(site: ANIDB, id: [Int!])` is
+- `AnimeThemesApi.cs`: GraphQL client. `findAnimeByExternalSite(site: ANIDB, id: [Int!])` is
   purpose-built for this plugin; the JSON:API it used to call is **deprecated and will be
-  removed** — do not use it. GraphQL errors arrive as HTTP 200 + `errors[]`.
-- `AnimeRelations.cs` — AniList relation lookups (prequel/sequel graph) used to tell seasons from
-  spin-offs; batched 15 ids/request with 500 ms pacing because AniList rate-limits by query cost.
-- `PluginServiceRegistrator.cs` — DI; two named HttpClients (`AnimeThemes` for the API,
+  removed**. Do not use it. GraphQL errors arrive as HTTP 200 with `errors[]`.
+- `AnimeRelations.cs`: AniList relation lookups (prequel/sequel graph) used to tell seasons from
+  spin-offs; batched at 15 ids per request with 500 ms pacing because AniList rate-limits by query
+  cost.
+- `PluginServiceRegistrator.cs`: DI; two named HttpClients (`AnimeThemes` for the API,
   `AnimeThemesMedia` for CDNs), both behind `PollyResilienceHandler` (retries 408/429/5xx,
   honors `Retry-After`). `AnimeThemesDownloader` is a **singleton** (it is captured by the
   singleton scheduled task).
-- `Models/` — GraphQL DTOs, **one type per file** (StyleCop SA1402). Everything binds via
+- `Models/`: GraphQL DTOs, **one type per file** (StyleCop SA1402). Everything binds via
   `JsonPropertyName`; GraphQL connections arrive as `{ nodes: [...] }` wrappers
   (`ResourceConnection`, `VideoConnection`, `SeriesConnection`, `AnimeConnection`).
-- `Configuration/configPage.html` — legacy Jellyfin web config page (emby-* elements, `ApiClient`
+- `Configuration/configPage.html`: legacy Jellyfin web config page (emby-* elements, `ApiClient`
   globals). This is still the supported mechanism on Jellyfin 12; keep that style.
 
-## Models & GraphQL shape gotchas
+## Models and GraphQL shape gotchas
 
-- `Anime.title` is a nested `AnimeTitle`; display name = `title.romaji` (see `Anime.Name`).
-- `AnimeThemeEntry` is a **version** of a theme (`version` 1, 2, 3 … — e.g. Bakemonogatari's ED1
-  has three), not an alternate encode; a `Video` is an encode of a version. Versions are all
+- `Anime.title` is a nested `AnimeTitle`; the display name is `title.romaji` (see `Anime.Name`).
+- `AnimeThemeEntry` is a **version** of a theme (`version` 1, 2, 3 …; for example Bakemonogatari's
+  ED1 has three), not an alternate encode; a `Video` is an encode of a version. Versions are all
   wanted ("the show has several OPs"), so selection keeps **every entry** and only collapses the
   encodes of one entry into the best-rated `Video`.
 - Enums use `[JsonConverter(typeof(JsonStringEnumConverter))]` on the enum type itself. The API's
-  `VideoOverlap` values are `NONE`/`TRANS`/`OVER` — `OverlapType.Transition` is aliased to `TRANS`
+  `VideoOverlap` values are `NONE`/`TRANS`/`OVER`; `OverlapType.Transition` is aliased to `TRANS`
   via `[JsonStringEnumMemberName("TRANS")]`; `ThemeType` gained `IN` (insert songs).
 - Nullable per schema even though C# types say otherwise: `Video.Overlap`, `Resource.ExternalId`,
-  `Video.Audio` — handle nulls (a missing `audio` means the theme is skipped, not crashed).
-- `Models.Video` vs `MediaBrowser.Model.Entities.Video` collide — the downloader aliases
+  `Video.Audio`. Handle nulls (a missing `audio` means the theme is skipped, not crashed).
+- `Models.Video` and `MediaBrowser.Model.Entities.Video` collide; the downloader aliases
   `Video = Jellyfin.Plugin.AnimeThemes.Models.Video` (and `MediaType`). Do not remove the aliases.
 
 ## Theme file naming is the state machine
 
 `{order}_{name}__{marker}__{size}-other.ext` in `theme-music/` (`.mp3`) or `backdrops/` (`.webm`):
 
-- `order` = theme-type rank + a **per-type 1-based counter** (`0-01`, `0-02` … = openings, `1-` =
-  insert songs, `2-` = endings), numbered in (year, sequence, version, name) order. Numbers are
-  unique within the pool — never reuse the per-anime `sequence` (multi-season pools produced
-  duplicate `0-01`s and `0-00` for null sequences)
-- `marker` = `n` (loudnorm mode) or volume×100
-- `size` = upstream byte size → a changed file is a *new* file (auto-refresh)
-- `-other` = extra-file suffix so Sonarr/Radarr skip theme media in disk scans (their
+- `order` is the theme-type rank and a **per-type 1-based counter** (`0-01`, `0-02` … for openings,
+  `1-` for insert songs, `2-` for endings), numbered in (year, sequence, version, name) order.
+  Numbers are unique within the pool. Never reuse the per-anime `sequence` (multi-season pools
+  produced duplicate `0-01`s and `0-00` for null sequences)
+- `marker` is `n` (loudnorm mode) or volume×100
+- `size` is the upstream byte size, so a changed file is a *new* file (auto-refresh)
+- `-other` is the extra-file suffix so Sonarr/Radarr skip theme media in disk scans (their
   `ExcludedExtraFilesRegex` matches `-(other|trailer|…)` before the extension). Jellyfin classifies
   theme media by **folder** (`backdrops`/`theme-music` win before suffix rules in
   `ExtraRuleResolver`), so the suffix is invisible to it
 
-Existence of the wanted name means "current"; `CleanDirectory` deletes only names matching
-`PluginThemeFilePattern` (`^.+__(?:n|\d+)(?:__\d+)?(?:-other)?(?:\.tmp)?\.(?:mp3|webm)$`) — hand-made
-files are never touched. **Any naming change must update the regex, `MigrateLegacyName`
-(rename-based migration, identity = name+marker+size with the `\d+-\d+_` prefix and the `-other`
-suffix stripped), and `PluginThemeFilePattern` together**, or upgrades will re-download or
+Existence of the wanted name means "current". `CleanDirectory` deletes only names matching
+`PluginThemeFilePattern` (`^.+__(?:n|\d+)(?:__\d+)?(?:-other)?(?:\.tmp)?\.(?:mp3|webm)$`), and
+hand-made files are never touched. **Any naming change must update the regex, `MigrateLegacyName`
+(rename-based migration, identity is name, marker and size, with the `\d+-\d+_` prefix and the
+`-other` suffix stripped), and `PluginThemeFilePattern` together**, or upgrades will re-download or
 mis-attribute files. ffmpeg writes to a `*.tmp.*` name and is `File.Move`d into place on success
-only — a partial file must never count as valid.
+only. A partial file must never count as valid.
 
 Note on playback order: jellyfin-web requests theme media with `sortBy=Random`
-(`src/components/themeMediaPlayer.js`) — background playback is shuffled **by design** and there is
-no supported server-side lever to change it (shadowing the `ItemSortBy.Random` comparer is
+(`src/components/themeMediaPlayer.js`). Background playback is shuffled **by design**, and there is
+no supported server-side option to change it (shadowing the `ItemSortBy.Random` comparer is
 possible via DI but would break Shuffle everywhere). The numbering only governs theme lists and
 clients that keep list order; `jellyfin-ordered-theme-playback.user.js` in the repo root strips
 `sortBy=Random` in the browser for ordered web playback.
 
 ## Config surface (PluginConfiguration)
 
-- `DegreeOfParallelism` (1–8, clamped ≥ 1), `IncludeLibraries` / `ExcludeLibraries` (regexes),
+- `DegreeOfParallelism` (1 to 8, clamped ≥ 1), `IncludeLibraries` / `ExcludeLibraries` (regexes),
   and per-media-type `MediaTypeConfiguration`: `FetchType` (None/Single/All), ignore flags,
   `Volume` (baked in), `NormalizeLoudness` (ffmpeg `loudnorm` instead of fixed volume).
 - Series use the **global** Audio/Video settings; Movies use `MovieSettings` (a separate
-  `CollectionTypeConfiguration`) — see `HandleAsync`.
+  `CollectionTypeConfiguration`). See `HandleAsync`.
 - The config page posts numbers as strings; Jellyfin's `JsonDefaults` (`AllowReadingFromString`,
   string enums) coerces them. `FetchType` values are the enum names (`None`/`Single`/`All`).
 
 ## API etiquette (AnimeThemes)
 
-- **90 requests/min**; query depth ≤ 13; complexity ≤ 10 000 (their words: experimental). Series
-  expansion makes queries heavier — keep batch sizes sane and verify worst cases (One Piece, AniDB
-  `69`) against the live API when changing query shape.
-- A **User-Agent is required** (403 without one) — use the product token set in
+- **90 requests per minute**; query depth ≤ 13; complexity ≤ 10 000 (their words: experimental).
+  Series expansion makes queries heavier, so keep batch sizes sane and verify worst cases (One
+  Piece, AniDB `69`) against the live API when changing query shape.
+- A **User-Agent is required** (403 without one). Use the product token set in
   `PluginServiceRegistrator`.
-- The media CDNs (`v./a.animethemes.moe`) shed parallel load with **503 bursts** — downloads are
+- The media CDNs (`v./a.animethemes.moe`) shed parallel load with **503 bursts**. Downloads are
   retried (Polly, honors `Retry-After`) and paced through a global `DownloadGate` (500 ms).
 
-## Patterns that are load-bearing (learned the hard way)
+## Patterns that must not change
 
-- Never `Path.Combine` with untrusted relative paths — use `CombineRelative` (CodeQL
+- Never `Path.Combine` with untrusted relative paths. Use `CombineRelative` (CodeQL
   `cs/path-combine`; rooted input must throw).
-- Never an unfiltered `catch (Exception)` — CodeQL `cs/catch-of-all-exceptions` flags it. The
-  house pattern distinguishes user cancellation from timeouts (a `TaskCanceledException`!):
+- Never an unfiltered `catch (Exception)`. CodeQL `cs/catch-of-all-exceptions` flags it. The
+  house pattern distinguishes user cancellation from timeouts (timeouts surface as
+  `TaskCanceledException`):
 
   ```csharp
   catch (Exception e) when (e is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
   ```
 - Cleanup runs **after** downloads and is skipped entirely when a download failed or when all
-  candidates were dropped by unusable API payloads — a failure must never remove existing themes.
+  candidates were dropped by unusable API payloads. A failure must never remove existing themes.
   Its deletions count as "changes" so metadata refreshes.
 - Disposables get `using` (`cs/local-not-disposed`): ffmpeg `Process`, `SemaphoreSlim`.
 - Workflow `uses:` pins are commit SHAs with version comments (CodeQL `actions/unpinned-tag`);
   every job declares `permissions:` (`actions/missing-workflow-permissions`).
 
-## CI & GitHub
+## CI and GitHub
 
-8 workflows (`build`, `test`, `check-jprm`, `scan-codeql` C#, `scan-codeql-actions` (Actions + JS),
-`dependency-review`, `sync-labels`, `publish`) plus Dependabot (`.github/dependabot.yml`: weekly nuget +
-github-actions, `dependencies`/`nuget`/`github-actions` labels). Renovate was removed to avoid
-duplicate PRs. Workflows are fork-aware (`${{ github.repository }}` gates) and call reusable
-`jellyfin/jellyfin-meta-plugins` workflows at SHA pins.
+8 workflows (`build`, `test`, `check-jprm`, `scan-codeql` for C#, `scan-codeql-actions` for Actions
+and JS, `dependency-review`, `sync-labels`, `publish`) plus Dependabot (`.github/dependabot.yml`:
+weekly nuget and github-actions, `dependencies`/`nuget`/`github-actions` labels). Renovate was
+removed to avoid duplicate PRs. Workflows are fork-aware (`${{ github.repository }}` gates) and call
+reusable `jellyfin/jellyfin-meta-plugins` workflows at SHA pins.
 
-`publish.yaml` runs on GitHub release: JPRM builds the zip → assets (+md5/sha256) go to the
-release → `jprm repo add ./manifest.json <zip> --plugin-url …` updates `manifest.json`
+`publish.yaml` runs on GitHub release. JPRM builds the zip, the assets (md5 and sha256 checksums)
+go to the release, and `jprm repo add ./manifest.json <zip> --plugin-url …` updates `manifest.json`
 (checksum, newest-first order) and opens a PR with the update. `manifest.json` is
-machine-maintained: never hand-edit entries. That PR needs the repo setting *Actions →
-Allow GitHub Actions to create and approve pull requests*
-(`can_approve_pull_request_reviews`); without it the job fails right after pushing its branch.
-The `jprm==<version>` pip pin lives inline where Dependabot cannot see it; `check-jprm`
-(weekly + on changes to `publish.yaml`) validates it against PyPI and opens a bump PR when
-it falls behind.
+machine-maintained: never hand-edit entries. That PR needs the repo setting *Allow GitHub Actions
+to create and approve pull requests* on the *Actions* page (`can_approve_pull_request_reviews`);
+without it the job fails right after pushing its branch. The `jprm==<version>` pip pin lives inline
+where Dependabot cannot see it; `check-jprm` (weekly and on changes to `publish.yaml`) validates it
+against PyPI and opens a bump PR when it falls behind.
 
-## Releasing (see README "Development & releasing" for the full flow)
+## Releasing (see README "Development and releasing" for the full flow)
 
-- **Everything lands through a pull request** — `main` is ruleset-protected ("Protect main": no
+- **Everything lands through a pull request.** `main` is ruleset-protected ("Protect main": no
   force-push or deletion, PR required, admins may bypass). Fixes, releases and automation all
   follow this; merge your own PRs once CI is green.
-- Version = `major.minor.patch.0`, set in **both** `Directory.Build.props` (3 fields) and
-  `build.yaml` (`version:`). Git tag == version exactly (`7.3.1.0`).
-- Keep `targetAbi: "12.0.0.0"` — it is the minimum server version, not the current one.
+- Version is `major.minor.patch.0`, set in **both** `Directory.Build.props` (3 fields) and
+  `build.yaml` (`version:`). The git tag equals the version exactly (`7.3.1.0`).
+- Keep `targetAbi: "12.0.0.0"`. It is the minimum server version, not the current one.
 - `build.yaml` `changelog:` becomes the manifest entry text at release time.
-- Release = merge the version-bump PR, then `gh release create <version> --target main --title
-  <version> --notes '...'`. The publish workflow does the rest and opens a PR with the
-  `manifest.json` update — merge it too. Never re-cut a published version — ship a patch bump.
+- Release by merging the version-bump PR, then running `gh release create <version> --target main
+  --title <version> --notes '...'`. The publish workflow does the rest and opens a PR with the
+  `manifest.json` update. Merge it too. Never re-cut a published version; ship a patch bump.
 - jprm gotchas when dry-running locally: run **from the repo root** (it finds `build.yaml`
   there), `python -m jprm plugin build . --dotnet-framework net10.0 --output <existing dir>`,
   and `repo add` needs `./manifest.json` (a bare `manifest.json` fails its path check).
 
 ## Log vocabulary (users quote these in bug reports)
 
-- `Skipping N of M item(s) without an AniDB provider id` → AniDB plugin missing / metadata not refreshed.
-- `{Type}: AnimeThemes has no themes for this anime yet` → series exists upstream, no OP/EDs published.
-- `{Type}: none of the N available theme video(s) match the configured filters` → relax ignore flags.
-- `keeping existing theme files because a download failed this run` → cleanup skipped; next run retries the download and then cleans up.
-- `keeping existing theme files: all N available theme video(s) were dropped by unusable API payloads` → upstream data problem (e.g. missing `audio`), not the config; themes survive until the API is healthy.
-- `Download failed … 503` → CDN rate limiting; retries + next run recover (keep parallelism low).
+- `Skipping N of M item(s) without an AniDB provider id`: the AniDB plugin is missing or metadata is not refreshed.
+- `{Type}: AnimeThemes has no themes for this anime yet`: the series exists upstream and no openings or endings are published.
+- `{Type}: none of the N available theme video(s) match the configured filters`: relax the ignore flags.
+- `keeping existing theme files because a download failed this run`: cleanup was skipped; the next run retries the download and then cleans up.
+- `keeping existing theme files: all N available theme video(s) were dropped by unusable API payloads`: an upstream data problem (for example missing `audio`), not the config; themes survive until the API is healthy.
+- `Download failed … 503`: CDN rate limiting; retries and the next run recover (keep parallelism low).
